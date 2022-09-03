@@ -30,9 +30,24 @@ export const config = {
   CONTRACT_ADDRESS: '0x0000000000000000000000000000000000000000',
 
   /**
-   * @description router address for pancakeswap
+   * @description List of supported routers on BSC
+   * @type {string[]}
    */
-  ROUTER_ADDRESS: '0x10ed43c718714eb63d5aa57b78b54704e256024e',
+  SUPPORTED_ROUTERS: ['0x10ed43c718714eb63d5aa57b78b54704e256024e'],
 
-  MIN_BNB_AMOUNT: 0.1 * 1e18,
+  /**
+   * @description List of supported  buy methods on BSC
+   * @type {string[]}
+   */
+
+  SUPPORTED_BUY_METHODS: [
+    'swapETHForExactTokens',
+    'swapExactETHForTokensSupportingFeeOnTransferTokens',
+    'swapExactETHForTokens',
+  ],
+
+  /**
+   * @description MINIMUM_AMOUNT is the minimum amount of BNB that can be swapped
+   */
+  MINIMUM_AMOUNT: 0.1,
 };

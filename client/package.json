@@ -6,7 +6,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "ts-node-dev -r dotenv/config src/index.ts"
+    "start": "ts-node-dev src/index.ts"
   },
   "dependencies": {
     "@types/dotenv": "^8.2.0",

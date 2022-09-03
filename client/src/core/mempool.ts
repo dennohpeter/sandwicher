@@ -1,11 +1,10 @@
-import { ethers, providers, Wallet } from 'ethers';
+import { ethers, providers, utils, Wallet } from 'ethers';
 
 /// Internal Imports
 import { config } from '../config';
-import { ITransaction } from '../types';
 import { ContractWrapper } from './contract';
 
-import ABI from '../ABI/pancakeswapABI.json';
+import { PANCAKESWAP_ABI } from '../constants';
 
 /**
  * @file mempool.ts
@@ -23,7 +22,7 @@ class Mempool {
   constructor() {
     // initialize provider
     this._wsprovider = new providers.WebSocketProvider(config.WSS_URL);
-    this._inter = new ethers.utils.Interface(ABI);
+    this._inter = new ethers.utils.Interface(PANCAKESWAP_ABI);
     this._provider = new providers.JsonRpcProvider(config.JSON_RPC);
   }
 
@@ -33,74 +32,75 @@ class Mempool {
   public monitor = async () => {
     // implement mempool monitoring
     this._wsprovider.on('pending', async (txHash: string) => {
-      const txReceipt = await this._wsprovider.getTransaction(txHash);
+      let receipt = await this._wsprovider.getTransaction(txHash);
 
-      if (txReceipt) {
-        const txDetails: ITransaction = {
-          from: txReceipt.from,
-          to: txReceipt.to,
-          value: txReceipt.value,
-          nonce: txReceipt.nonce,
-          gasPrice: txReceipt.gasPrice,
-          gasLimit: txReceipt.gasLimit,
-          hash: txReceipt.hash,
-          data: txReceipt.data,
-        };
-
-        this._process(txDetails);
-      }
+      receipt?.hash && this._process(receipt);
     });
   };
 
   /**
    * Process transactions
-   * @param tx
+   * @param receipt - transaction receipt
    */
 
-  private _process = async (txDetails: ITransaction) => {
+  private _process = async (receipt: providers.TransactionResponse) => {
     // implement transaction processing
+    if (receipt?.to) {
+      console.log('Router address is:', receipt?.to);
 
-    let router = txDetails.to;
-
-    if (router) {
-      console.log('Router address is ', router);
-
-      if (router.toLowerCase() == config.ROUTER_ADDRESS.toLowerCase()) {
+      if (
+        config.SUPPORTED_ROUTERS.some(
+          (router) => router.toLowerCase() === receipt?.to?.toLowerCase()
+        )
+      ) {
         console.log('we are here');
 
         // process transaction
-        const decoded_data = this._inter.parseTransaction({
-          data: txDetails.data,
-        });
+        try {
+          const decoded_data = this._inter.parseTransaction({
+            data: receipt.data,
+          });
 
-        let targetBNBAmount = parseInt(txDetails.value._hex, 16) / 1e18;
-        let methodName = decoded_data.name;
-        let gasPrice = parseInt(txDetails.gasPrice._hex, 16) / 1e9;
-        let gasLimit = parseInt(txDetails.gasLimit._hex, 16);
+          let targetBNBAmount = utils.formatEther(receipt.value);
 
-        console.log('targetBNBAmount is ', targetBNBAmount);
-        console.log('methodName is ', methodName);
-        console.log('gasPrice is ', gasPrice);
-        console.log('gasLimit is ', gasLimit);
+          let targetMethodName = decoded_data.name;
 
-        if (
-          methodName == 'swapETHForExactTokens' ||
-          methodName == 'swapExactETHForTokensSupportingFeeOnTransferTokens' ||
-          methodName == 'swapExactETHForTokens'
-        ) {
-          /**
-           * check if transaction meets clients criteria/ thresholds
-            if yes, execute transaction
-            if no, ignore transaction
+          let targetGasPrice = utils.formatUnits(receipt?.gasPrice || '0', 9); // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+          let targetGasLimit = receipt.gasLimit;
 
-           */
+          let targetGasFee = targetGasLimit.mul(targetGasPrice);
 
-          if (targetBNBAmount > config.MIN_BNB_AMOUNT) {
-            console.log(
-              `\n Target ${targetBNBAmount} and method is \n ${methodName}`
-            );
-            console.log('WE ARE ABOUT TO SLASH A NIGGA');
+          console.log({
+            targetBNBAmount,
+            targetMethodName,
+            targetGasPrice,
+            targetGasLimit,
+            targetGasFee,
+          });
+
+          /// Check if the transaction is a buy transaction
+          if (config.SUPPORTED_BUY_METHODS.includes(targetMethodName)) {
+            /**
+             * check if transaction meets clients criteria/ thresholds
+             * if yes, execute transaction
+             * if no, ignore transaction
+             */
+
+            if (
+              receipt.value.gt(
+                utils.parseUnits(config.MINIMUM_AMOUNT.toString())
+              )
+            ) {
+              console.log(
+                `\n Target ${targetBNBAmount} and method is \n ${targetMethodName}`
+              );
+              console.log('WE ARE ABOUT TO SLASH A NIGGA');
+
+              // exec transaction, 1. for buy 2. for sell
+            }
           }
+        } catch (error) {
+          console.error(`Error: ${error}`);
         }
       }
     }

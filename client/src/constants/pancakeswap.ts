@@ -1,4 +1,4 @@
-[
+export const PANCAKESWAP_ABI =  [
     {
         "inputs": [
             {
