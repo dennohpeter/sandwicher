@@ -5,6 +5,9 @@
   "main": "src/index.ts",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "start": "ts-node-dev src/index.ts"
+  },
   "dependencies": {
     "@types/dotenv": "^8.2.0",
     "@types/node": "^18.7.14",

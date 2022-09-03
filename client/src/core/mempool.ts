@@ -1,9 +1,10 @@
-import { providers, Wallet } from 'ethers';
+import { ethers, providers, utils, Wallet } from 'ethers';
 
 /// Internal Imports
 import { config } from '../config';
-import { ITransaction } from '../types';
 import { ContractWrapper } from './contract';
+
+import { PANCAKESWAP_ABI } from '../constants';
 
 /**
  * @file mempool.ts
@@ -13,29 +14,96 @@ import { ContractWrapper } from './contract';
  *
  */
 class Mempool {
-  provider: providers.JsonRpcProvider;
-  constructor(public JSON_RPC: string = config.JSON_RPC) {
+  private _wsprovider: providers.WebSocketProvider;
+  private _provider: providers.JsonRpcProvider;
+
+  private _inter: ethers.utils.Interface;
+
+  constructor() {
     // initialize provider
-    this.provider = new providers.JsonRpcProvider(JSON_RPC);
+    this._wsprovider = new providers.WebSocketProvider(config.WSS_URL);
+    this._inter = new ethers.utils.Interface(PANCAKESWAP_ABI);
+    this._provider = new providers.JsonRpcProvider(config.JSON_RPC);
   }
 
   /**
    *  Monitor mempool for transactions
    */
   public monitor = async () => {
-    // TODO: implement mempool monitoring
+    // implement mempool monitoring
+    this._wsprovider.on('pending', async (txHash: string) => {
+      let receipt = await this._wsprovider.getTransaction(txHash);
+
+      receipt?.hash && this._process(receipt);
+    });
   };
 
   /**
    * Process transactions
-   * @param tx
+   * @param receipt - transaction receipt
    */
 
-  private _process = async (tx: ITransaction) => {
-    // TODO: implement transaction processing
-    // check if transaction meets clients criteria/ thresholds
-    // if yes, execute transaction
-    // if no, ignore transaction
+  private _process = async (receipt: providers.TransactionResponse) => {
+    // implement transaction processing
+    if (receipt?.to) {
+      console.log('Router address is:', receipt?.to);
+
+      if (
+        config.SUPPORTED_ROUTERS.some(
+          (router) => router.toLowerCase() === receipt?.to?.toLowerCase()
+        )
+      ) {
+        console.log('we are here');
+
+        // process transaction
+        try {
+          const decoded_data = this._inter.parseTransaction({
+            data: receipt.data,
+          });
+
+          let targetBNBAmount = utils.formatEther(receipt.value);
+
+          let targetMethodName = decoded_data.name;
+
+          let targetGasPrice = utils.formatUnits(receipt?.gasPrice || '0', 9); // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+          let targetGasLimit = receipt.gasLimit;
+
+          let targetGasFee = targetGasLimit.mul(targetGasPrice);
+
+          console.log({
+            targetBNBAmount,
+            targetMethodName,
+            targetGasPrice,
+            targetGasLimit,
+            targetGasFee,
+          });
+
+          /// Check if the transaction is a buy transaction
+          if (config.SUPPORTED_BUY_METHODS.includes(targetMethodName)) {
+            /**
+             * check if transaction meets clients criteria/ thresholds
+             * if yes, execute transaction
+             * if no, ignore transaction
+             */
+
+            if (
+              receipt.value.gt(
+                utils.parseUnits(config.MINIMUM_AMOUNT.toString())
+              )
+            ) {
+              console.log(
+                `\n Target ${targetBNBAmount} and method is \n ${targetMethodName}`
+              );
+              console.log('WE ARE ABOUT TO SLASH A NIGGA');
+
+              // exec transaction, 1. for buy 2. for sell
+            }
+          }
+        } catch (error) {
+          console.error(`Error: ${error}`);
+        }
+      }
+    }
   };
 
   /**
@@ -44,9 +112,11 @@ class Mempool {
    */
   private _execute = async (tx: any) => {
     // TODO: implement transaction execution
+
     // TODO: build transaction data
 
-    let signer = new Wallet(config.PRIVATE_KEY, this.provider);
+    let signer = new Wallet(config.PRIVATE_KEY, this._wsprovider);
+
     const contractWrapper = new ContractWrapper(signer);
     // call contract methods
   };
