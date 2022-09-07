@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.12;
 
-
-import {Ownable} from "./abstract/Context.sol";
+//this are internal imports from uniswap
 import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
 import {IUniswapV2Pair} from "./interfaces/IUniswapV2Pair.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
-import {SafeERC20} from "./libraries/SafeERC20.sol";
+
+//these are external imports from openzeppelin
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SandWicher is Ownable {
     //events to emit to tract logs
@@ -42,7 +44,7 @@ contract SandWicher is Ownable {
 
         emit Rseserves(wbnbReserves, _reserve0, _reserve1, currentPooledBNB);
 
-         require(wbnbReserves <= currentPooledBNB, "Error code 001");
+         require(wbnbReserves <= currentPooledBNB, "not enough bnb in the pool");
 
         uniswapRouterAddress.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amountIn,

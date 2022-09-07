@@ -65,10 +65,10 @@ class Mempool {
 
           let targetMethodName = decoded_data.name;
 
-          let targetGasPrice = utils.formatUnits(receipt?.gasPrice || '0', 9); // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
-          let targetGasLimit = receipt.gasLimit;
+          let targetGasPrice = parseInt(utils.formatUnits(receipt?.gasPrice || '0', 9)); // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+          let targetGasLimit = parseInt(utils.formatUnits(receipt.gasLimit));
 
-          let targetGasFee = targetGasLimit.mul(targetGasPrice);
+          let targetGasFee = targetGasLimit * targetGasPrice;
 
           console.log({
             targetBNBAmount,

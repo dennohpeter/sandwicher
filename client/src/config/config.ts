@@ -1,3 +1,4 @@
+import { ChainId, Token } from '@pancakeswap/sdk';
 import 'dotenv/config';
 
 if (!process.env.PRIVATE_KEY) {
@@ -27,7 +28,20 @@ export const config = {
    * @description Contract address
    * @type {string}
    */
-  CONTRACT_ADDRESS: '0x0000000000000000000000000000000000000000',
+  SMART_CONTRACT_ADDRESS: '0x0C40867BE119a0E8De576240F5d2a31bE45c7b67',
+
+  WALLET_ADDRESS: process.env.WALLET_ADDRESS,
+
+  PANCAKE_SWAP_ROUTER: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
+
+  WBNB_ADDRESS: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+
+  WBNB_TOKEN: new Token(
+    ChainId.BSC,
+    "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+    18
+  ),
+
 
   /**
    * @description List of supported routers on BSC
@@ -46,8 +60,26 @@ export const config = {
     'swapExactETHForTokens',
   ],
 
+
+
+
+
   /**
    * @description MINIMUM_AMOUNT is the minimum amount of BNB that can be swapped
    */
   MINIMUM_AMOUNT: 0.1,
+
+  /**
+   * @description DEFAULT_GAS_LIMIT that we use in transactions
+   */
+  DEFAULT_GAS_LIMIT: 300000,
+
+  DEFAULT_GAS_PRICE: 10,
+
+  /**
+   * @description ADDITIONAL_BUY_GAS that we use in front-running the traget
+   */
+  ADDITIONAL_BUY_GAS: 10
+
+
 };

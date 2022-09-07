@@ -1,1 +1,1 @@
-export * from './ITransaction';
+export * from './interfaces';
