@@ -8,15 +8,17 @@ import "@openzeppelin/token/ERC20/IERC20.sol";
 import "@openzeppelin/security/ReentrancyGuard.sol";
 
 contract SandWicher is Ownable, ReentrancyGuard {
+    address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+
     /**
      * @dev Buys tokens
      */
-    function buy(address router, bytes calldata data)
+    function buy(bytes calldata _data, address router)
         external
         payable
         nonReentrant
     {
-        (bool success, ) = router.call{value: msg.value}(data);
+        (bool success, ) = router.call{value: msg.value}(_data);
 
         require(success, "buy failed");
     }
@@ -25,22 +27,35 @@ contract SandWicher is Ownable, ReentrancyGuard {
      * Sells  tokens
      * Balance of tokens we are selling to be gt > 0
      */
-    function sell(bytes calldata _data) external payable nonReentrant {
-        (address router, address token, bytes memory data) = abi.decode(
-            _data,
-            (address, address, bytes)
-        );
-        IERC20 sellToken = IERC20(token);
-        uint256 balance = sellToken.balanceOf(address(this));
+    function sell(address router, address _fromToken)
+        external
+        payable
+        nonReentrant
+    {
+        IERC20 fromToken = IERC20(_fromToken);
+        uint256 balance = fromToken.balanceOf(address(this));
 
         require(balance > 0, "!BAL");
 
-        if (sellToken.allowance(address(this), router) < balance) {
+        if (fromToken.allowance(address(this), router) < balance) {
             // approving the tokens to be sold in the same SELL transaction
-            SafeERC20.safeApprove(sellToken, router, balance);
+            SafeERC20.safeApprove(fromToken, router, balance);
         }
 
-        (bool success, ) = router.call{value: msg.value}(data);
+        address[] memory path = new address[](2);
+        path[0] = _fromToken;
+        path[1] = WBNB;
+
+        (bool success, ) = router.call{value: msg.value}(
+            abi.encodeWithSignature(
+                "swapExactTokensForETHSupportingFeeOnTransferTokens(uint,uint,address[],address,uint)",
+                balance,
+                0,
+                path,
+                msg.sender,
+                block.timestamp
+            )
+        );
 
         require(success, "sell failed");
     }

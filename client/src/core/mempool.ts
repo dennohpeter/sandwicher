@@ -1,8 +1,15 @@
-import { ethers, providers, utils, Wallet } from 'ethers';
+import {
+  BigNumber,
+  constants,
+  Contract,
+  ethers,
+  providers,
+  utils,
+  Wallet,
+} from 'ethers';
 
 /// Internal Imports
 import { config } from '../config';
-import { ContractWrapper } from './contract';
 
 import { PANCAKESWAP_ABI } from '../constants';
 
@@ -10,24 +17,29 @@ import { PANCAKESWAP_ABI } from '../constants';
  * @file mempool.ts
  * @description mempool class is a singleton class that manages  interactions
  * with the mempool including monitoring, processing and executing transactions
- * @author @Henry Kariuki
+ * @author Henry Kariuki
  *
  */
 class Mempool {
-
   private _wsprovider: providers.WebSocketProvider;
   private _provider: providers.JsonRpcProvider;
-  private _inter: ethers.utils.Interface;
-  private signer;
-
+  private _pancakeSwap: ethers.utils.Interface;
+  private contract: Contract;
 
   constructor() {
     // initialize some variables i.e provider, signers, interface
     this._wsprovider = new providers.WebSocketProvider(config.WSS_URL);
-    this._inter = new ethers.utils.Interface(PANCAKESWAP_ABI);
+    this._pancakeSwap = new ethers.utils.Interface(PANCAKESWAP_ABI);
     this._provider = new providers.JsonRpcProvider(config.JSON_RPC);
-    this.signer = new Wallet(config.PRIVATE_KEY, this._wsprovider);
 
+    this.contract = new Contract(
+      config.CONTRACT_ADDRESS,
+      [
+        `function buy(bytes,address) payable`,
+        `function sell(address, address) payable`,
+      ],
+      new Wallet(config.PRIVATE_KEY, this._wsprovider)
+    );
   }
 
   /**
@@ -36,9 +48,13 @@ class Mempool {
   public monitor = async () => {
     // implement mempool monitoring
     this._wsprovider.on('pending', async (txHash: string) => {
-      let receipt = await this._wsprovider.getTransaction(txHash);
+      try {
+        let receipt = await this._wsprovider.getTransaction(txHash);
 
-      receipt?.hash && this._process(receipt);
+        receipt?.hash && this._process(receipt);
+      } catch (error) {
+        console.error(`Error`, error);
+      }
     });
   };
 
@@ -49,168 +65,125 @@ class Mempool {
 
   private _process = async (receipt: providers.TransactionResponse) => {
     // implement transaction processing
-    if (receipt?.to) {
+    let {
+      value: targetBNBAmountInWei,
+      to: router,
+      gasPrice: targetGasPriceInWei,
+      gasLimit: targetGasLimit,
+    } = receipt;
+    if (
+      router &&
+      config.SUPPORTED_ROUTERS.some(
+        (router) => router.toLowerCase() === receipt?.to?.toLowerCase()
+      )
+    ) {
+      try {
+        // decode tx data
+        const tx = this._pancakeSwap.parseTransaction({
+          data: receipt.data,
+        });
 
-      if (
-        config.SUPPORTED_ROUTERS.some(
-          (router) => router.toLowerCase() === receipt?.to?.toLowerCase()
-        )
-      ) {
+        let { name: targetMethodName, args: targetArgs } = tx;
 
-        // process transaction decoding the data
-        try {
-          const decoded_data = this._inter.parseTransaction({
-            data: receipt.data,
-          });
+        // let targetGasLimit = parseInt(utils.formatUnits(receipt.gasLimit));
 
-          //instatiate the contract wrapper class
+        // let targetGasFee = targetGasLimit * targetGasPrice;
 
-          const contractWrapper = new ContractWrapper(this.signer);
+        // let path = tx.args.path;
+        // swaoExactEthForTokens(
+        // args
+        // )
 
-          let targetBNBAmount = utils.formatEther(receipt.value);
+        // let gasPrice: any = await this._provider.getGasPrice();
 
-          let targetMethodName = decoded_data.name;
+        // console.log('GasPrice', utils.formatUnits(gasPrice.toString()));
 
-          let targetGasPrice = parseInt(utils.formatUnits(receipt?.gasPrice || '0', 9)); // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+        let path = targetArgs.path;
+        // Check if target method is in the supported list of buy methods
+        if (
+          config.SUPPORTED_BUY_METHODS.includes(targetMethodName) &&
+          Object.values(config.SUPPORTED_BUY_TOKENS).some(
+            (t) => t.address.toLowerCase() === path[0].toLowerCase()
+          )
+        ) {
+          // Check if tx value  is > clients threshold
+          if (
+            receipt.value.gt(utils.parseUnits(config.MIN_BNB_AMOUNT.toString()))
+          ) {
+            console.log('********WE ARE ABOUT TO  EXECUTE TRANSACTION*******');
 
-          let targetGasLimit = parseInt(utils.formatUnits(receipt.gasLimit));
-
-          let targetGasFee = targetGasLimit * targetGasPrice;
-
-          let path = decoded_data.args.path;
-
-
-
-          let nonce = await contractWrapper.getWalletNonce()
-
-
-          //TODO write a cron job to fetch this gasPrice every 20 secs
-
-          let gasPrice: any = await this._provider.getGasPrice();
-
-          console.log("GasPrice", utils.formatUnits(gasPrice.toString()))
-
-          //Check if the transaction is a buy transaction
-
-          if (config.SUPPORTED_BUY_METHODS.includes(targetMethodName)) {
-            /**
-             * check if transaction meets clients criteria/ thresholds
-             * if yes, execute transaction
-             * if no, ignore transaction
-             * 
-             */
-
-            console.log({
-              targetBNBAmount,
-              targetMethodName,
-              targetGasPrice,
-              targetGasLimit,
-              targetGasFee,
-              path,
-
-            });
-
-
-
-            if (
-              receipt.value.gt(
-                utils.parseUnits(config.MINIMUM_AMOUNT.toString())
-              )
-            ) {
-              console.log(
-                `\n Target ${targetBNBAmount} and method is \n ${targetMethodName}`
-              );
-              console.log('********WE ARE ABOUT TO  EXECUTE TRANSACTION*******');
-
-              let token = path[path.length - 1];
-
-
-              let pair = await contractWrapper.getTokenPair(token, 18);
-
-              let pairAddress = pair!.liquidityToken.address;
-
-
-              let bnbToken;
-
-              if (pair!.token1.address.toLowerCase() == config.WBNB_ADDRESS.toLowerCase()) {
-                bnbToken = pair!.token1
-              } else {
-                bnbToken = pair!.token0
-              }
-
-              const pooledWBNB = parseInt(pair!.reserveOf(bnbToken).toFixed(2))
-
-              console.log({
-                bnbToken,
-                pairAddress,
-                pooledWBNB
-              })
-
+            // TODO: calc profit
+            let profit = 1;
+            if (profit > 0) {
               /**
-               * zone to checkk for profit calculations
+               * zone to execute buy and calculate estimations of gases
                */
 
-              const check = await contractWrapper.checkProfit({
-                bnbToken: config.WBNB_ADDRESS,
-                token: token,
-                bnbBuyAmount: utils.parseEther(config.BNB_BUY_AMOUNT.toString()),
-                pancakeRouter: config.PANCAKE_SWAP_ROUTER
-              })
+              let opts: {
+                amountOutMin?: BigNumber;
+                amountIn?: BigNumber;
+              } = {};
 
-              console.log("Check", check)
+              switch (targetMethodName) {
+                case 'swapExactETHForTokens':
+                case 'swapExactETHForTokensSupportingFeeOnTransferTokens':
+                  opts.amountOutMin = constants.Zero;
+                  break;
 
-              let profit = check[0];
+                case 'swapExactTokensForTokensSupportingFeeOnTransferTokens':
+                  let targetToken = path[0];
+                  let decimals = this._getTokenDecimals(targetToken);
 
+                  opts.amountIn = utils.parseUnits(
+                    (this._isStableToken(targetToken)
+                      ? config.USD_BUY_AMOUNT
+                      : config.BNB_BUY_AMOUNT
+                    ).toString(),
+                    decimals
+                  );
+                  opts.amountOutMin = constants.Zero;
 
-              if (profit > 0) {
-
-                /**
-                * zone to execute buy and calculate estimations of gases
-                */
-
-
-                let buyTransaction = await contractWrapper.buy({
-                  amountIn: utils.parseUnits(config.BNB_BUY_AMOUNT.toString()),
-                  amountOutMin: 0,
-                  path: path,
-                  pairAddress: pairAddress,
-                  pooledWBNB: pooledWBNB,
-                  gasPrice: (targetGasPrice += config.ADDITIONAL_BUY_GAS),
-                  nonce: nonce
-                })
-
-
-                let estimateGas: any;
-
-                try {
-
-                  //estimating the gas of the transaction 
-                  estimateGas = await this._provider.estimateGas(buyTransaction!)
-                } catch (error) {
-                  console.log("Error", error)
-                }
-
-                //   const myGasPrice = gasPrice * config.DEFAULT_GAS_LIMIT;
-
-                //   const txCostBNB = estimateGas * myGasPrice;
-
-                //   const profitMinusFee = profit - txCostBNB
-
-                //   if (profitMinusFee > 0) {
-
-
-                //     // final execution zone transaction .1 buy 2. sell
-                //   }
-
+                  break;
+                default:
+                  throw new Error('Unsupported Buy Method');
               }
 
+              let args = {
+                ...opts,
+                path,
+                router,
+                deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
+              };
 
+              // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+              targetGasPriceInWei =
+                targetGasPriceInWei || ethers.constants.Zero;
 
+              let data = this._pancakeSwap.encodeFunctionData(
+                targetMethodName,
+                Object.values(args)
+              );
+
+              // broadcast buy tx
+              this._execute(data, 'buy', router, {
+                gasPrice: targetGasPriceInWei.add(
+                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+                ),
+              });
+
+              let sellToken = path[path.length - 1];
+
+              // broadcast sell tx
+              this._execute(sellToken, 'sell', router, {
+                gasPrice: targetGasPriceInWei.add(
+                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+                ),
+              });
             }
           }
-        } catch (error) {
-          console.error(`Error: ${error}`);
         }
+      } catch (error) {
+        console.error(`Error: ${error}`);
       }
     }
   };
@@ -219,18 +192,47 @@ class Mempool {
    * Execute transactions
    * @param txs
    */
-  private _execute = async (tx: any) => {
-    // TODO: implement transaction execution
-
-    // TODO: build transaction data
-
-    let signer = new Wallet(config.PRIVATE_KEY, this._wsprovider);
-
-    const contractWrapper = new ContractWrapper(signer);
-
-
-
+  private _execute = async (
+    data: string,
+    type: 'buy' | 'sell',
+    router?: string,
+    overloads?: {
+      gasLimit?: number | string;
+      nonce?: number;
+      gasPrice: BigNumber;
+    }
+  ): Promise<{
+    success: boolean;
+    msg?: string;
+  }> => {
+    try {
+      if (type.valueOf() === 'buy') {
+        await this.contract.buy(data, router, overloads);
+      } else {
+        // sell
+        await this.contract.sell(data, router, overloads);
+      }
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      console.error(error);
+      return {
+        success: false,
+        msg: error,
+      };
+    }
   };
+
+  private _isStableToken = (address: string) =>
+    config.STABLE_TOKENS.some((t) => t.toLowerCase() === address.toLowerCase());
+
+  private _getTokenDecimals = (address: string) =>
+    this._isStableToken(address)
+      ? Object.values(config.SUPPORTED_BUY_TOKENS).find(
+          (t) => t.address.toLowerCase() === address.toLowerCase()
+        )?.decimals || 6 // fallback to 6 decimals
+      : 18;
 }
 
 export const mempoolWrapper = new Mempool();
