@@ -2,10 +2,10 @@
 pragma solidity ^0.8.12;
 
 // External imports from openzeppelin
-import "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/access/Ownable.sol";
-import "@openzeppelin/token/ERC20/IERC20.sol";
-import "@openzeppelin/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract SandWicher is Ownable, ReentrancyGuard {
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
