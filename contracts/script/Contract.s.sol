@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
 import "forge-std/Script.sol";
 
-import {SandWicher} from "scr/SandWicher.sol";
+import {SandWicher} from "@contracts/SandWicher.sol";
 
 contract ContractScript is Script {
     function setUp() public {}
