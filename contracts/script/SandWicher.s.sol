@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 
 import {SandWicher} from "@contracts/SandWicher.sol";
 
-contract ContractScript is Script {
+contract SandWicherScript is Script {
     function setUp() public {}
 
     function run() public {
