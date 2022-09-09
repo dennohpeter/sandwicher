@@ -1,7 +1,6 @@
 
 export const SMART_CONTRACT_ABI = [
 
-
     {
         "anonymous": false,
         "inputs": [
@@ -122,6 +121,45 @@ export const SMART_CONTRACT_ABI = [
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "_tokenPay",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_tokenSwap",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_amoutTokenPay",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "_sourceRouter",
+                "type": "address"
+            }
+        ],
+        "name": "checkProfit",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "address payable",
                 "name": "_to",
                 "type": "address"
@@ -143,6 +181,13 @@ export const SMART_CONTRACT_ABI = [
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "renounceOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
@@ -176,6 +221,19 @@ export const SMART_CONTRACT_ABI = [
                 "type": "bool"
             }
         ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newOwner",
+                "type": "address"
+            }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
     },

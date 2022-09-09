@@ -30,14 +30,14 @@ export const config = {
    */
   SMART_CONTRACT_ADDRESS: '0x0C40867BE119a0E8De576240F5d2a31bE45c7b67',
 
-  WALLET_ADDRESS: process.env.WALLET_ADDRESS,
+  WALLET_ADDRESS: process.env.WALLET_ADDRESS!,
 
   PANCAKE_SWAP_ROUTER: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
 
   WBNB_ADDRESS: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
 
   WBNB_TOKEN: new Token(
-    ChainId.BSC,
+    ChainId.MAINNET,
     "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
     18
   ),
@@ -62,8 +62,6 @@ export const config = {
 
 
 
-
-
   /**
    * @description MINIMUM_AMOUNT is the minimum amount of BNB that can be swapped
    */
@@ -79,7 +77,14 @@ export const config = {
   /**
    * @description ADDITIONAL_BUY_GAS that we use in front-running the traget
    */
-  ADDITIONAL_BUY_GAS: 10
+  ADDITIONAL_BUY_GAS: 10,
+
+
+  PANCAKESWAP_FACTORY_ADDRESS: "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73",
+
+
+  BNB_BUY_AMOUNT: 0.1
+
 
 
 };

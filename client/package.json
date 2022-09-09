@@ -9,7 +9,7 @@
     "start": "ts-node-dev src/index.ts"
   },
   "dependencies": {
-    "@pancakeswap/sdk": "^3.0.0",
+    "@pancakeswap/sdk": "2.4.0",
     "@types/dotenv": "^8.2.0",
     "@types/node": "^18.7.14",
     "dotenv": "^16.0.2",
