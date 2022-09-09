@@ -6,13 +6,21 @@ import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
 import {IUniswapV2Pair} from "./interfaces/IUniswapV2Pair.sol";
 
 //these are external imports from openzeppelin
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/access/Ownable.sol";
+import "@openzeppelin/token/ERC20/IERC20.sol";
 
 contract SandWicher is Ownable {
-    //events to emit to tract logs
-    event Rseserves(
+
+    /**
+        * @dev Errors
+        Insufficient Balance : 001
+        Insuffcient amount to withdraw : 002
+        not enough bnb in the pool : 003
+     */
+
+    /** Events to emit to tract logs **/
+    event Reserves(
         uint256 _wbnbReserves,
         uint256 _reserve0,
         uint256 _reserve1,
@@ -30,7 +38,7 @@ contract SandWicher is Ownable {
         IUniswapV2Router02 uniswapRouterAddress,
         IUniswapV2Pair pairAddress,
         uint256 currentPooledBNB
-    ) external {
+    ) external returns (bool) {
         uint112 wbnbReserves;
         (uint112 _reserve0, uint112 _reserve1, ) = pairAddress.getReserves();
 
@@ -42,9 +50,9 @@ contract SandWicher is Ownable {
             wbnbReserves = _reserve1;
         }
 
-        emit Rseserves(wbnbReserves, _reserve0, _reserve1, currentPooledBNB);
+        emit Reserves(wbnbReserves, _reserve0, _reserve1, currentPooledBNB);
 
-         require(wbnbReserves <= currentPooledBNB, "not enough bnb in the pool");
+         require(wbnbReserves <= currentPooledBNB, "Error 003");
 
         uniswapRouterAddress.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amountIn,
@@ -52,6 +60,8 @@ contract SandWicher is Ownable {
               path,
                address(this),
                 deadline);
+
+                return true;
     }
      
 
@@ -67,7 +77,7 @@ contract SandWicher is Ownable {
 
         uint256 balance = IERC20(path[0]).balanceOf(address(this));
 
-        require(balance > 0, "Insufficient Balance");
+        require(balance > 0, "Error 001");
 
         /**
         approving the tokens to be sold in the same SELL transaction 
@@ -105,7 +115,7 @@ contract SandWicher is Ownable {
       */
 
      function withdrawToken(IERC20 tokenContractAddress, uint256 amount)external onlyOwner returns (bool) {
-         require( amount <= address(this).balance, "Insuffcient amount to withdraw");
+         require( amount <= address(this).balance, "Error 002");
         SafeERC20.safeTransfer(tokenContractAddress, owner(), amount);
         return true;
 
@@ -124,5 +134,38 @@ contract SandWicher is Ownable {
        */ 
     receive() external payable {}
 
+/**
+ this function is used to calculate profitability of our trade to be carried out
+ */
+    function checkProfit(
+        address _tokenPay, //source currency we will get: example: BNB
+        address _tokenSwap, //swapped currency with the source currency; example BUSD
+        uint _amoutTokenPay, // example: BNB => 10 * 1e18
+        address _sourceRouter //pancakeswap router address
+
+    ) public view returns (uint, uint){
+
+        IUniswapV2Router02 _router = IUniswapV2Router02(_sourceRouter);
+
+        address[] memory path1 = new address[](2);
+         address[] memory path2 = new address[](2);
+
+          // path1 represents the forwarding exchange from source currency [bNB] to swapped currency [BUSD]
+        path1[0] = path2[1] = _tokenPay;
+        // path2 represents the backward exchange from swapeed currency [BUSD] to source currency [BNB]
+        path1[1] = path2[0] = _tokenSwap;
+
+
+
+        uint amountOut = _router.getAmountsOut(_amoutTokenPay, path1)[1];// amountsOut BUSD
+        uint amountRepay = _router.getAmountsOut(amountOut, path2)[1]; //amountsOut BNB
+
+        return (
+            (amountRepay - _amoutTokenPay), //our profit or loss; example output: BNB
+             amountOut // the amount we get from our input "_amountTokenPay"; example: BUSD amount
+        );
+    }
+
+    
 }
 
