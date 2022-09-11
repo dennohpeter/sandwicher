@@ -124,7 +124,7 @@ class Mempool {
             // TODO: calc profit
             let profit = 1;
 
-            // let priceImpact = await this._getPriceImpact(token, targetBNBAmountInWei)
+            //let priceImpact = await this._getPriceImpact(token, targetBNBAmountInWei)
 
             // console.log("PRICE IMPACT", priceImpact)
 
