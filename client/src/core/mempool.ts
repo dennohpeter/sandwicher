@@ -1,4 +1,11 @@
-import { ChainId, Fetcher, Route, TokenAmount, Trade, TradeType } from '@pancakeswap/sdk';
+import {
+  ChainId,
+  Fetcher,
+  Route,
+  TokenAmount,
+  Trade,
+  TradeType,
+} from '@pancakeswap/sdk';
 import {
   BigNumber,
   constants,
@@ -34,7 +41,7 @@ class Mempool {
     this._provider = new providers.JsonRpcProvider(config.JSON_RPC);
 
     this.contract = new Contract(
-      config.CONTRACT_ADDRESS,//smartcontract address
+      config.CONTRACT_ADDRESS, //smartcontract address
       [
         `function buy(bytes,address) payable`,
         `function sell(address, address) payable`,
@@ -67,10 +74,12 @@ class Mempool {
   private _process = async (receipt: providers.TransactionResponse) => {
     // implement transaction processing
     let {
-      value: targetBNBAmountInWei,
+      value: targetAmountInWei,
       to: router,
       gasPrice: targetGasPriceInWei,
       gasLimit: targetGasLimit,
+      hash: targetHash,
+      from: targetFrom,
     } = receipt;
     if (
       router &&
@@ -86,28 +95,19 @@ class Mempool {
 
         let { name: targetMethodName, args: targetArgs } = tx;
 
-        // let targetGasLimit = parseInt(utils.formatUnits(receipt.gasLimit));
+        let targetGasFeeInBNB = utils.formatEther(
+          targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
+        );
 
-        // let targetGasFee = targetGasLimit * targetGasPrice;
-
-        // let path = tx.args.path;
-        // swaoExactEthForTokens(
-        // args
-        // )
-
-        // let gasPrice: any = await this._provider.getGasPrice();
-
-        // console.log('GasPrice', utils.formatUnits(gasPrice.toString()));
+        // let gasPrice = await this._provider.getGasPrice();
 
         let path = targetArgs.path;
-        let token = path[path.length - 1]
 
+        if (!path) return;
 
-        //let target = parseInt(targetBNBAmountInWei.toString())
+        let targetFromToken = path[0];
+        let targetToToken = path[path.length - 1];
 
-        console.log("TARGET AMOUNT", parseInt(targetBNBAmountInWei.toString()))
-
-        console.log("TOKEN", token)
         // Check if target method is in the supported list of buy methods
         if (
           config.SUPPORTED_BUY_METHODS.includes(targetMethodName) &&
@@ -117,18 +117,50 @@ class Mempool {
         ) {
           // Check if tx value  is > clients threshold
           if (
-            receipt.value.gt(utils.parseUnits(config.MIN_BNB_AMOUNT.toString()))
+            this._isStableToken(targetFromToken)
+              ? targetAmountInWei.gt(
+                  utils.parseUnits(
+                    config.MIN_USD_AMOUNT.toString(),
+                    this._getTokenDecimals(targetFromToken)
+                  )
+                )
+              : targetAmountInWei.gt(
+                  utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
+                )
           ) {
+            console.log({
+              targetHash,
+              targetFrom,
+              // targetMaxFeePerGas,
+              // targetMaxPriorityFeePerGas,
+              // targetBlockNumber,
+              targetAmountInBNB: parseFloat(
+                utils.formatEther(targetAmountInWei)
+              ),
+              targetFromToken,
+              targetToToken,
+              targetMethodName,
+              targetGasLimit: targetGasLimit.toNumber(),
+              targetGasPrice: parseFloat(
+                utils.formatUnits(targetGasPriceInWei || constants.Zero, 'gwei')
+              ),
+              targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
+            });
+
             console.log('********WE ARE ABOUT TO  EXECUTE TRANSACTION*******');
 
-            // TODO: calc profit
-            let profit = 1;
+            // calc price impact
+            let priceImpact = await this._getPriceImpact(
+              targetFromToken,
+              targetToToken,
+              targetAmountInWei
+            );
 
-            //let priceImpact = await this._getPriceImpact(token, targetBNBAmountInWei)
+            console.log({
+              priceImpact,
+            });
 
-            // console.log("PRICE IMPACT", priceImpact)
-
-            if (profit > 0) {
+            if (priceImpact > config.MIN_PRICE_IMPACT) {
               /**
                * zone to execute buy and calculate estimations of gases
                */
@@ -178,11 +210,16 @@ class Mempool {
                 Object.values(args)
               );
 
+              let nonce = await this._provider.getTransactionCount(
+                config.PUBLIC_KEY
+              );
+
               // broadcast buy tx
               this._execute(data, 'buy', router, {
                 gasPrice: targetGasPriceInWei.add(
                   utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
                 ),
+                nonce,
               });
 
               let sellToken = path[path.length - 1];
@@ -192,6 +229,7 @@ class Mempool {
                 gasPrice: targetGasPriceInWei.add(
                   utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
                 ),
+                nonce: nonce + 1,
               });
             }
           }
@@ -204,7 +242,10 @@ class Mempool {
 
   /**
    * Execute transactions
-   * @param txs
+   * @param data - transaction data
+   * @param type - transaction type
+   * @param router - transaction router
+   * @param overloads - transaction overloads
    */
   private _execute = async (
     data: string,
@@ -220,12 +261,20 @@ class Mempool {
     msg?: string;
   }> => {
     try {
-      if (type.valueOf() === 'buy') {
-        await this.contract.buy(data, router, overloads);
-      } else {
-        // sell
-        await this.contract.sell(data, router, overloads);
-      }
+      console.log('EXECUTING TRANSACTION');
+      console.log({
+        data,
+        router,
+        overloads,
+        type,
+      });
+
+      // if (type.valueOf() === 'buy') {
+      //   await this.contract.buy(data, router, overloads);
+      // } else {
+      //   // sell
+      //   await this.contract.sell(data, router, overloads);
+      // }
       return {
         success: true,
       };
@@ -244,38 +293,46 @@ class Mempool {
   private _getTokenDecimals = (address: string) =>
     this._isStableToken(address)
       ? Object.values(config.SUPPORTED_BUY_TOKENS).find(
-        (t) => t.address.toLowerCase() === address.toLowerCase()
-      )?.decimals || 6 // fallback to 6 decimals
+          (t) => t.address.toLowerCase() === address.toLowerCase()
+        )?.decimals || 6 // fallback to 6 decimals
       : 18;
 
-
-  private _getPriceImpact = async (tokenAddress: string, amount: number) => {
-
+  private _getPriceImpact = async (
+    _fromToken: string,
+    _toToken: string,
+    amount: BigNumber
+  ) => {
     try {
       // Fetch information for a given token on the given chain, using the given ethers provider.
-      let newToken = await Fetcher.fetchTokenData(ChainId.MAINNET, tokenAddress, this._provider)
-      let WBNB = await Fetcher.fetchTokenData(ChainId.MAINNET, config.WBNB_ADDRESS, this._provider)
+      let fromToken = await Fetcher.fetchTokenData(
+        ChainId.MAINNET,
+        _fromToken,
+        this._provider
+      );
+      let toToken = await Fetcher.fetchTokenData(
+        ChainId.MAINNET,
+        _toToken,
+        this._provider
+      );
 
       //Fetches information about a pair and constructs a pair from the given two tokens.
-      let pair = await Fetcher.fetchPairData(newToken, WBNB)
-      let route = new Route([pair], WBNB)
+      let pair = await Fetcher.fetchPairData(fromToken, toToken);
+      let route = new Route([pair], toToken);
 
-      let trade = new Trade(route, new TokenAmount(newToken, amount), TradeType.EXACT_INPUT)
+      let trade = new Trade(
+        route,
+        new TokenAmount(fromToken, amount.toString()),
+        TradeType.EXACT_INPUT
+      );
 
-      console.log("**********PAIR********", trade)
+      console.log('**********PAIR********', trade);
 
-      return trade.priceImpact
-
-
+      return parseFloat(trade.priceImpact.toFixed(4));
     } catch (error) {
-      console.error
+      console.error;
     }
-
-  }
-
+    return 0;
+  };
 }
-
-
-
 
 export const mempoolWrapper = new Mempool();

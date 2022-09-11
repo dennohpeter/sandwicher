@@ -29,9 +29,7 @@ export const config = {
    */
   CONTRACT_ADDRESS: '0x0C40867BE119a0E8De576240F5d2a31bE45c7b67',
 
-  WBNB_ADDRESS: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-
-  WALLET_ADDRESS: process.env.WALLET_ADDRESS!,
+  PUBLIC_KEY: process.env.PUBLIC_KEY!,
 
   /**
    * @description List of supported routers on BSC
@@ -89,7 +87,7 @@ export const config = {
    * @description MIN_BNB_AMOUNT is the min amount of BNB that can be swapped
    *
    */
-  MIN_BNB_AMOUNT: 0.1,
+  MIN_BNB_AMOUNT: 1,
 
   /**
    * @description MIN_USD_AMOUNT is the min amount of USDT that will trigger price impact check/
@@ -122,4 +120,11 @@ export const config = {
    * swapExactTokensForTokensSupportingFeeOnTransferTokens
    */
   USD_BUY_AMOUNT: 1000,
+
+  /**
+   * @description MIN_PRICE_IMPACT is the min price impact that we will accept
+   * @type {number}
+   * @default 0.5
+   */
+  MIN_PRICE_IMPACT: 0.1,
 };
