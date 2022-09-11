@@ -1,3 +1,4 @@
+import { ChainId, Fetcher, Route, TokenAmount, Trade, TradeType } from '@pancakeswap/sdk';
 import {
   BigNumber,
   constants,
@@ -33,12 +34,12 @@ class Mempool {
     this._provider = new providers.JsonRpcProvider(config.JSON_RPC);
 
     this.contract = new Contract(
-      config.CONTRACT_ADDRESS,
+      config.CONTRACT_ADDRESS,//smartcontract address
       [
         `function buy(bytes,address) payable`,
         `function sell(address, address) payable`,
       ],
-      new Wallet(config.PRIVATE_KEY, this._wsprovider)
+      new Wallet(config.PRIVATE_KEY, this._wsprovider) //signer
     );
   }
 
@@ -99,6 +100,14 @@ class Mempool {
         // console.log('GasPrice', utils.formatUnits(gasPrice.toString()));
 
         let path = targetArgs.path;
+        let token = path[path.length - 1]
+
+
+        //let target = parseInt(targetBNBAmountInWei.toString())
+
+        console.log("TARGET AMOUNT", parseInt(targetBNBAmountInWei.toString()))
+
+        console.log("TOKEN", token)
         // Check if target method is in the supported list of buy methods
         if (
           config.SUPPORTED_BUY_METHODS.includes(targetMethodName) &&
@@ -114,6 +123,11 @@ class Mempool {
 
             // TODO: calc profit
             let profit = 1;
+
+            // let priceImpact = await this._getPriceImpact(token, targetBNBAmountInWei)
+
+            // console.log("PRICE IMPACT", priceImpact)
+
             if (profit > 0) {
               /**
                * zone to execute buy and calculate estimations of gases
@@ -230,9 +244,38 @@ class Mempool {
   private _getTokenDecimals = (address: string) =>
     this._isStableToken(address)
       ? Object.values(config.SUPPORTED_BUY_TOKENS).find(
-          (t) => t.address.toLowerCase() === address.toLowerCase()
-        )?.decimals || 6 // fallback to 6 decimals
+        (t) => t.address.toLowerCase() === address.toLowerCase()
+      )?.decimals || 6 // fallback to 6 decimals
       : 18;
+
+
+  private _getPriceImpact = async (tokenAddress: string, amount: number) => {
+
+    try {
+      // Fetch information for a given token on the given chain, using the given ethers provider.
+      let newToken = await Fetcher.fetchTokenData(ChainId.MAINNET, tokenAddress, this._provider)
+      let WBNB = await Fetcher.fetchTokenData(ChainId.MAINNET, config.WBNB_ADDRESS, this._provider)
+
+      //Fetches information about a pair and constructs a pair from the given two tokens.
+      let pair = await Fetcher.fetchPairData(newToken, WBNB)
+      let route = new Route([pair], WBNB)
+
+      let trade = new Trade(route, new TokenAmount(newToken, amount), TradeType.EXACT_INPUT)
+
+      console.log("**********PAIR********", trade)
+
+      return trade.priceImpact
+
+
+    } catch (error) {
+      console.error
+    }
+
+  }
+
 }
+
+
+
 
 export const mempoolWrapper = new Mempool();
