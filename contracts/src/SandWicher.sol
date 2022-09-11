@@ -16,6 +16,7 @@ contract SandWicher is Ownable, ReentrancyGuard {
     function buy(bytes calldata _data, address router)
         external
         payable
+        onlyOwner
         nonReentrant
     {
         (bool success, ) = router.call{value: msg.value}(_data);
@@ -30,6 +31,7 @@ contract SandWicher is Ownable, ReentrancyGuard {
     function sell(address router, address _fromToken)
         external
         payable
+        onlyOwner
         nonReentrant
     {
         IERC20 fromToken = IERC20(_fromToken);
