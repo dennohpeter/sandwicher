@@ -7,21 +7,42 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+interface IPancakeRouter02 {
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external;
+}
+
 contract SandWicher is Ownable, ReentrancyGuard {
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
 
     /**
      * @dev Buys tokens
      */
-    function buy(bytes calldata _data, address router)
-        external
-        payable
-        onlyOwner
-        nonReentrant
-    {
-        (bool success, ) = router.call{value: msg.value}(_data);
+    function buy(bytes calldata _data) external payable onlyOwner nonReentrant {
+        (
+            address router,
+            uint256 amountIn,
+            uint256 amountOutMin,
+            address[] memory path
+        ) = abi.decode(_data, (address, uint256, uint256, address[]));
 
-        require(success, "buy failed");
+        IERC20 fromToken = IERC20(path[0]);
+
+        _approve(fromToken, router, amountIn);
+
+        IPancakeRouter02(router)
+            .swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                amountIn,
+                amountOutMin,
+                path,
+                address(this),
+                block.timestamp
+            );
     }
 
     /**
@@ -35,31 +56,36 @@ contract SandWicher is Ownable, ReentrancyGuard {
         nonReentrant
     {
         IERC20 fromToken = IERC20(_fromToken);
-        uint256 balance = fromToken.balanceOf(address(this));
+        uint256 amountIn = fromToken.balanceOf(address(this));
+        uint256 amountOutMin = 0;
 
-        require(balance > 0, "!BAL");
+        require(amountIn > 0, "!BAL");
 
-        if (fromToken.allowance(address(this), router) < balance) {
-            // approving the tokens to be sold in the same SELL transaction
-            SafeERC20.safeApprove(fromToken, router, balance);
-        }
+        _approve(fromToken, router, amountIn);
 
         address[] memory path = new address[](2);
         path[0] = _fromToken;
         path[1] = WBNB;
 
-        (bool success, ) = router.call{value: msg.value}(
-            abi.encodeWithSignature(
-                "swapExactTokensForETHSupportingFeeOnTransferTokens(uint,uint,address[],address,uint)",
-                balance,
-                0,
+        IPancakeRouter02(router)
+            .swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                amountIn,
+                amountOutMin,
                 path,
-                msg.sender,
+                address(this),
                 block.timestamp
-            )
-        );
+            );
+    }
 
-        require(success, "sell failed");
+    function _approve(
+        IERC20 token,
+        address router,
+        uint256 amountIn
+    ) internal {
+        if (token.allowance(address(this), router) < amountIn) {
+            // approving the tokens to be spent by router
+            SafeERC20.safeApprove(token, router, amountIn);
+        }
     }
 
     /**
