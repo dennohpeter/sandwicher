@@ -103,6 +103,7 @@ class Mempool {
 
         let path = targetArgs.path;
 
+        //if the path is undefined stop execution and return
         if (!path) return;
 
         let targetFromToken = path[0];
@@ -119,14 +120,14 @@ class Mempool {
           if (
             this._isStableToken(targetFromToken)
               ? targetAmountInWei.gt(
-                  utils.parseUnits(
-                    config.MIN_USD_AMOUNT.toString(),
-                    this._getTokenDecimals(targetFromToken)
-                  )
+                utils.parseUnits(
+                  config.MIN_USD_AMOUNT.toString(),
+                  this._getTokenDecimals(targetFromToken)
                 )
+              )
               : targetAmountInWei.gt(
-                  utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
-                )
+                utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
+              )
           ) {
             console.log({
               targetHash,
@@ -160,78 +161,84 @@ class Mempool {
               priceImpact,
             });
 
-            if (priceImpact > config.MIN_PRICE_IMPACT) {
-              /**
-               * zone to execute buy and calculate estimations of gases
-               */
+            // if (priceImpact > config.MIN_PRICE_IMPACT) {
+            /**
+             * zone to execute buy and calculate estimations of gases
+             */
 
-              let opts: {
-                amountOutMin?: BigNumber;
-                amountIn?: BigNumber;
-              } = {};
+            console.log("***************************************")
 
-              switch (targetMethodName) {
-                case 'swapExactETHForTokens':
-                case 'swapExactETHForTokensSupportingFeeOnTransferTokens':
-                  opts.amountOutMin = constants.Zero;
-                  break;
+            let opts: {
+              amountOutMin?: BigNumber;
+              amountIn?: BigNumber;
+            } = {};
 
-                case 'swapExactTokensForTokensSupportingFeeOnTransferTokens':
-                  let targetToken = path[0];
-                  let decimals = this._getTokenDecimals(targetToken);
+            switch (targetMethodName) {
+              case 'swapExactETHForTokens':
+              case 'swapExactETHForTokensSupportingFeeOnTransferTokens':
+                opts.amountOutMin = constants.Zero;
+                break;
 
-                  opts.amountIn = utils.parseUnits(
-                    (this._isStableToken(targetToken)
-                      ? config.USD_BUY_AMOUNT
-                      : config.BNB_BUY_AMOUNT
-                    ).toString(),
-                    decimals
-                  );
-                  opts.amountOutMin = constants.Zero;
+              case 'swapExactTokensForTokensSupportingFeeOnTransferTokens':
+                let targetToken = path[0];
+                let decimals = this._getTokenDecimals(targetToken);
 
-                  break;
-                default:
-                  throw new Error('Unsupported Buy Method');
-              }
+                opts.amountIn = utils.parseUnits(
+                  (this._isStableToken(targetToken)
+                    ? config.USD_BUY_AMOUNT
+                    : config.BNB_BUY_AMOUNT
+                  ).toString(),
+                  decimals
+                );
+                opts.amountOutMin = constants.Zero;
 
-              let args = {
-                ...opts,
-                path,
-                router,
-                deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
-              };
-
-              // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
-              targetGasPriceInWei =
-                targetGasPriceInWei || ethers.constants.Zero;
-
-              let data = this._pancakeSwap.encodeFunctionData(
-                targetMethodName,
-                Object.values(args)
-              );
-
-              let nonce = await this._provider.getTransactionCount(
-                config.PUBLIC_KEY
-              );
-
-              // broadcast buy tx
-              this._execute(data, 'buy', router, {
-                gasPrice: targetGasPriceInWei.add(
-                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-                ),
-                nonce,
-              });
-
-              let sellToken = path[path.length - 1];
-
-              // broadcast sell tx
-              this._execute(sellToken, 'sell', router, {
-                gasPrice: targetGasPriceInWei.add(
-                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-                ),
-                nonce: nonce + 1,
-              });
+                break;
+              default:
+                throw new Error('Unsupported Buy Method');
             }
+
+            let args = {
+              ...opts,
+              path,
+              router,
+              deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
+
+
+            };
+
+            // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+            targetGasPriceInWei =
+              targetGasPriceInWei || ethers.constants.Zero;
+
+            let data = this._pancakeSwap.encodeFunctionData(
+              targetMethodName,
+              Object.values(args)
+            );
+
+            let nonce = await this._provider.getTransactionCount(
+              config.PUBLIC_KEY
+            );
+
+            // broadcast buy tx
+            this._execute(data, 'buy', router, {
+              gasPrice: targetGasPriceInWei.add(
+                utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+              ),
+              gasLimit: config.DEFAULT_GAS_LIMIT,
+
+              nonce,
+            });
+
+            let sellToken = path[path.length - 1];
+
+            // broadcast sell tx
+            this._execute(sellToken, 'sell', router, {
+              gasPrice: targetGasPriceInWei.add(
+                utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+              ),
+              nonce: nonce + 1,
+            });
+            //}
           }
         }
       } catch (error) {
@@ -269,12 +276,12 @@ class Mempool {
         type,
       });
 
-      // if (type.valueOf() === 'buy') {
-      //   await this.contract.buy(data, router, overloads);
-      // } else {
-      //   // sell
-      //   await this.contract.sell(data, router, overloads);
-      // }
+      if (type.valueOf() === 'buy') {
+        await this.contract.buy(data, router, overloads);
+      } else {
+        // sell
+        await this.contract.sell(data, router, overloads);
+      }
       return {
         success: true,
       };
@@ -293,8 +300,8 @@ class Mempool {
   private _getTokenDecimals = (address: string) =>
     this._isStableToken(address)
       ? Object.values(config.SUPPORTED_BUY_TOKENS).find(
-          (t) => t.address.toLowerCase() === address.toLowerCase()
-        )?.decimals || 6 // fallback to 6 decimals
+        (t) => t.address.toLowerCase() === address.toLowerCase()
+      )?.decimals || 6 // fallback to 6 decimals
       : 18;
 
   private _getPriceImpact = async (

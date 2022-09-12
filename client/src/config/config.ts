@@ -92,7 +92,7 @@ export const config = {
   /**
    * @description MIN_USD_AMOUNT is the min amount of USDT that will trigger price impact check/
    */
-  MIN_USD_AMOUNT: 1000,
+  MIN_USD_AMOUNT: 100,
 
   ////////////// FALLBACK VALUES /////////////////
 

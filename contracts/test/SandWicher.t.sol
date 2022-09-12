@@ -15,7 +15,7 @@ contract ContractTest is Test {
     SandWicher sandWicher;
     TokenERC20 token;
 
-    /// Participants
+    /// Participantsooooo;lohhy\
     address public defaultAdmin = address(0x10000);
     address public mainnetDefaultAdmin =
         0x11eDedebF63bef0ea2d2D071bdF88F71543ec6fB; // big WBNB whale
@@ -39,13 +39,17 @@ contract ContractTest is Test {
     function testwithdrawToken() public {
         vm.startPrank(defaultAdmin);
 
+        //assert that the balance of the sandwicher is 0 before transfer od tokens to it
         assertEq(token.balanceOf(address(sandWicher)), 0);
         token.mintTo(address(sandWicher), 1000);
-        assertEq(token.balanceOf(address(sandWicher)), 1000);
 
+        //assert that after trasfering tokens to the sandwicher the balance is 1000
+        assertEq(token.balanceOf(address(sandWicher)), 1000);
         sandWicher.withdrawToken(IERC20(token), 500);
 
+        //assert that after withdrawing 500 tokens the balance is 500 for sandwicher contract
         assertEq(token.balanceOf(address(sandWicher)), 500);
+        //assert that the balance of the default admin is 500
         assertEq(token.balanceOf(defaultAdmin), 500);
         vm.stopPrank();
     }
@@ -83,6 +87,7 @@ contract ContractTest is Test {
     }
 
     function testOnlyOwner() public {
+        //expect test to pass since the person withdrawing the tokens is not the owner
         vm.expectRevert("Ownable: caller is not the owner");
         sandWicher.withdrawToken(IERC20(token), 1000);
 
