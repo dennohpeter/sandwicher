@@ -15,12 +15,11 @@ contract ContractTest is Test {
     SandWicher sandWicher;
     TokenERC20 token;
 
-    /// Participantsooooo;lohhy\
-    address public defaultAdmin = address(0x10000);
-    address public mainnetDefaultAdmin =
-        0x11eDedebF63bef0ea2d2D071bdF88F71543ec6fB; // big WBNB whale
+    /// Participants
+    address public defaultAdmin = 0x11eDedebF63bef0ea2d2D071bdF88F71543ec6fB; // big WBNB whale
     address public router = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
     address public WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    address public BSCUSD = 0x55d398326f99059fF775485246999027B3197955;
 
     function setUp() public {
         vm.createFork(MAINNET_RPC_URL);
@@ -55,34 +54,82 @@ contract ContractTest is Test {
     }
 
     function testBuy() public {
-        vm.startPrank(mainnetDefaultAdmin);
-        IERC20 _token = IERC20(WBNB);
+        vm.startPrank(defaultAdmin);
+        IERC20 fromToken = IERC20(WBNB);
         uint256 amount = 10 ether;
 
-        assertGt(_token.balanceOf(mainnetDefaultAdmin), amount);
+        assertGt(fromToken.balanceOf(defaultAdmin), amount);
 
-        assertEq(_token.balanceOf(address(sandWicher)), 0);
+        assertEq(fromToken.balanceOf(address(sandWicher)), 0);
 
-        _token.approve(address(sandWicher), amount);
+        fromToken.approve(address(sandWicher), amount);
 
         /// send 10 BNB to the contract
-        _token.transferFrom(mainnetDefaultAdmin, address(sandWicher), amount);
+        fromToken.transferFrom(defaultAdmin, address(sandWicher), amount);
 
-        assertEq(token.balanceOf(address(sandWicher)), amount);
+        assertEq(fromToken.balanceOf(address(sandWicher)), amount);
+        address[] memory path = new address[](2);
+        path[0] = WBNB;
+        path[1] = BSCUSD;
+
+        uint256 amountIn = 0.5 ether;
+
+        sandWicher.buy{value: amountIn}(
+            abi.encode(
+                router, // router
+                amountIn, // amountIn
+                0,
+                path
+            )
+        );
+
+        assertGt(IERC20(BSCUSD).balanceOf(address(sandWicher)), 0);
         vm.stopPrank();
-        // sandWicher.buy(
-        //     abi.encodeWithSignature(
-        //         "swapExactETHForTokensSupportingFeeOnTransferTokens(uint,address[],address,uint)",
-        //         0,
-        //         new address[](2),
-        //         address(sandWicher),
-        //         block.timestamp
-        //     ),
-        //     address(sandWicher)
-        // );
+    }
 
-        // assertEq(token.balanceOf(address(sandWicher)), 0);
-        // assertEq(token.balanceOf(mainnetDefaultAdmin), 1000);
+    function testSell() public {
+        vm.startPrank(defaultAdmin);
+
+        // BUY TOKEN
+        IERC20 fromToken = IERC20(WBNB);
+        IERC20 toToken = IERC20(BSCUSD);
+        uint256 amount = 10 ether;
+
+        assertGt(fromToken.balanceOf(defaultAdmin), amount);
+
+        assertEq(fromToken.balanceOf(address(sandWicher)), 0);
+
+        fromToken.approve(address(sandWicher), amount);
+
+        /// send 10 BNB to the contract
+        fromToken.transferFrom(defaultAdmin, address(sandWicher), amount);
+
+        assertEq(fromToken.balanceOf(address(sandWicher)), amount);
+        address[] memory path = new address[](2);
+        path[0] = address(fromToken);
+        path[1] = address(toToken);
+
+        uint256 amountIn = 0.5 ether;
+
+        sandWicher.buy(
+            abi.encode(
+                router, // router
+                amountIn, // amountIn
+                0,
+                path
+            )
+        );
+
+        assertGt(toToken.balanceOf(address(sandWicher)), 0);
+
+        // SELL TOKEN
+
+        sandWicher.sell(
+            router, // router
+            address(toToken) // token to sell
+        );
+        assertEq(toToken.balanceOf(address(sandWicher)), 0);
+
         vm.stopPrank();
     }
 
@@ -92,7 +139,7 @@ contract ContractTest is Test {
         sandWicher.withdrawToken(IERC20(token), 1000);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        sandWicher.buy("0x0", router);
+        sandWicher.buy("0x0");
 
         vm.expectRevert("Ownable: caller is not the owner");
         sandWicher.sell(router, address(token));
