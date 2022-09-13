@@ -82,12 +82,25 @@ export const config = {
     },
   },
 
+  ///////////////////WHITELISTED_USERS OF THE BOT //////////
+  WHITELISTED_USERS: [""],
+
+  ////////////////////////BOT TOKEN////////////////////////
+
+  BOT_TOKEN: process.env.BOT_TOKEN!,
+
   ////////////// PRICE IMPACT CONFIGs ////////////
   /**
    * @description MIN_BNB_AMOUNT is the min amount of BNB that can be swapped
    *
    */
   MIN_BNB_AMOUNT: 1,
+
+  ////////////////// SLIPPAGE CONFIGS ////////////////
+  /***
+   * @description MINIMUM_SLIPPAGE_AMOUNT is the min slippage amount to consider before execution.
+   */
+  MINIMUM_SLIPPAGE_AMOUNT: 5,
 
   /**
    * @description MIN_USD_AMOUNT is the min amount of USDT that will trigger price impact check/

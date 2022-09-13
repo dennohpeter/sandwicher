@@ -55,9 +55,10 @@ contract ContractTest is Test {
 
     function testBuy() public {
         vm.startPrank(defaultAdmin);
+
         IERC20 fromToken = IERC20(WBNB);
         uint256 amount = 10 ether;
-
+        //assert that balance of default admin is greater than the amount we are going to transfer
         assertGt(fromToken.balanceOf(defaultAdmin), amount);
 
         assertEq(fromToken.balanceOf(address(sandWicher)), 0);

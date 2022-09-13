@@ -99,6 +99,8 @@ class Mempool {
           targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
         );
 
+        //let targetAmounts = utils.parseUnits(targetArgs.amountOutMin)
+
         // let gasPrice = await this._provider.getGasPrice();
 
         let path = targetArgs.path;
@@ -132,9 +134,6 @@ class Mempool {
             console.log({
               targetHash,
               targetFrom,
-              // targetMaxFeePerGas,
-              // targetMaxPriorityFeePerGas,
-              // targetBlockNumber,
               targetAmountInBNB: parseFloat(
                 utils.formatEther(targetAmountInWei)
               ),
@@ -150,18 +149,17 @@ class Mempool {
 
             console.log('********WE ARE ABOUT TO  EXECUTE TRANSACTION*******');
 
-            // calc price impact
-            let priceImpact = await this._getPriceImpact(
+            // calc execution price
+            let executionPrice = await this._getExecutionPrice(
               targetFromToken,
               targetToToken,
               targetAmountInWei
             );
 
             console.log({
-              priceImpact,
+              executionPrice,
             });
 
-            // if (priceImpact > config.MIN_PRICE_IMPACT) {
             /**
              * zone to execute buy and calculate estimations of gases
              */
@@ -173,10 +171,23 @@ class Mempool {
               amountIn?: BigNumber;
             } = {};
 
+            let targetTokensPerBNB: any;
+            let targetSlippage: any;
+            let targetAmounts;
+
             switch (targetMethodName) {
               case 'swapExactETHForTokens':
               case 'swapExactETHForTokensSupportingFeeOnTransferTokens':
                 opts.amountOutMin = constants.Zero;
+
+                //calc target token amounts
+                targetAmounts = utils.parseUnits(targetArgs.amountOutMin)
+
+                //calculate target's tokens per BNB if target is using the above methods
+                targetTokensPerBNB = targetAmounts.div(targetAmountInWei)
+
+                //calculate the target slippage amount
+                targetSlippage = (executionPrice - targetTokensPerBNB) / executionPrice
                 break;
 
               case 'swapExactTokensForTokensSupportingFeeOnTransferTokens':
@@ -190,6 +201,7 @@ class Mempool {
                   ).toString(),
                   decimals
                 );
+
                 opts.amountOutMin = constants.Zero;
 
                 break;
@@ -197,48 +209,58 @@ class Mempool {
                 throw new Error('Unsupported Buy Method');
             }
 
-            let args = {
-              ...opts,
-              path,
-              router,
-              deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
+            console.log({
+              targetTokensPerBNB,
+              targetSlippage
+
+            })
 
 
-            };
+            if (targetSlippage > config.MINIMUM_SLIPPAGE_AMOUNT) {
 
-            // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
-            targetGasPriceInWei =
-              targetGasPriceInWei || ethers.constants.Zero;
+              let args = {
+                ...opts,
+                path,
+                router,
+                deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
 
-            let data = this._pancakeSwap.encodeFunctionData(
-              targetMethodName,
-              Object.values(args)
-            );
 
-            let nonce = await this._provider.getTransactionCount(
-              config.PUBLIC_KEY
-            );
+              };
 
-            // broadcast buy tx
-            this._execute(data, 'buy', router, {
-              gasPrice: targetGasPriceInWei.add(
-                utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-              ),
-              gasLimit: config.DEFAULT_GAS_LIMIT,
+              // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+              targetGasPriceInWei =
+                targetGasPriceInWei || ethers.constants.Zero;
 
-              nonce,
-            });
+              let data = this._pancakeSwap.encodeFunctionData(
+                targetMethodName,
+                Object.values(args)
+              );
 
-            let sellToken = path[path.length - 1];
+              let nonce = await this._provider.getTransactionCount(
+                config.PUBLIC_KEY
+              );
 
-            // broadcast sell tx
-            this._execute(sellToken, 'sell', router, {
-              gasPrice: targetGasPriceInWei.add(
-                utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-              ),
-              nonce: nonce + 1,
-            });
-            //}
+              // broadcast buy tx
+              this._execute(data, 'buy', router, {
+                gasPrice: targetGasPriceInWei.add(
+                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+                ),
+                nonce,
+              });
+
+              let sellToken = path[path.length - 1];
+
+              // broadcast sell tx
+              this._execute(sellToken, 'sell', router, {
+                gasPrice: targetGasPriceInWei.add(
+                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+                ),
+                nonce: nonce + 1,
+              });
+
+            }
+
+
           }
         }
       } catch (error) {
@@ -304,7 +326,7 @@ class Mempool {
       )?.decimals || 6 // fallback to 6 decimals
       : 18;
 
-  private _getPriceImpact = async (
+  private _getExecutionPrice = async (
     _fromToken: string,
     _toToken: string,
     amount: BigNumber
@@ -334,7 +356,7 @@ class Mempool {
 
       console.log('**********PAIR********', trade);
 
-      return parseFloat(trade.priceImpact.toFixed(4));
+      return parseFloat(trade.executionPrice.toFixed(4));
     } catch (error) {
       console.error;
     }
