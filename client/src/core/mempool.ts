@@ -297,7 +297,7 @@ class Mempool {
         overloads,
         type,
       });
-
+      //buy
       if (type.valueOf() === 'buy') {
         await this.contract.buy(data, router, overloads);
       } else {
