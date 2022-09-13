@@ -181,10 +181,10 @@ class Mempool {
                 opts.amountOutMin = constants.Zero;
 
                 //calc target token amounts
-                targetAmounts = utils.parseUnits(targetArgs.amountOutMin)
+                targetAmounts = utils.parseEther(targetArgs.amountOutMin.toString())
 
                 //calculate target's tokens per BNB if target is using the above methods
-                targetTokensPerBNB = targetAmounts.div(targetAmountInWei)
+                targetTokensPerBNB = utils.formatEther(targetAmounts.div(targetAmountInWei))
 
                 //calculate the target slippage amount
                 targetSlippage = (executionPrice - targetTokensPerBNB) / executionPrice
@@ -211,7 +211,8 @@ class Mempool {
 
             console.log({
               targetTokensPerBNB,
-              targetSlippage
+              targetSlippage,
+              targetAmounts
 
             })
 
