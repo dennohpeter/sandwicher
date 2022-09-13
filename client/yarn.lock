@@ -409,9 +409,9 @@
     dotenv "*"
 
 "@types/node@^18.7.14":
-  version "18.7.14"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.7.14.tgz#0fe081752a3333392d00586d815485a17c2cf3c9"
-  integrity sha512-6bbDaETVi8oyIARulOE9qF1/Qdi/23z6emrUh0fNJRUmjznqrixD4MpGDdgOFk5Xb0m2H6Xu42JGdvAxaJR/wA==
+  version "18.7.17"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.7.17.tgz#52438111ea98f77475470fc62d79b9eb96bb2c92"
+  integrity sha512-0UyfUnt02zIuqp7yC8RYtDkp/vo8bFaQ13KkSEvUAohPOAlnVNbj5Fi3fgPSuwzakS+EvvnnZ4x9y7i6ASaSPQ==
 
 "@types/strip-bom@^3.0.0":
   version "3.0.0"
@@ -908,9 +908,9 @@ supports-preserve-symlinks-flag@^1.0.0:
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
 telegraf@^4.9.1:
-  version "4.9.1"
-  resolved "https://registry.yarnpkg.com/telegraf/-/telegraf-4.9.1.tgz#bc12e98ea75f2aaf72c5c4a8a0d49c68837bf0b7"
-  integrity sha512-MukWpKvAZ6/HpT3yHXz+jwUf2HsPa9TcsqPLQjJ+kHNGUS2PLgaNX690ExdWmWPuxjVjC4wNHmZ9JetO3C/tVA==
+  version "4.9.2"
+  resolved "https://registry.yarnpkg.com/telegraf/-/telegraf-4.9.2.tgz#48f51319b605f58d55c191d7b46646f53b2a2a48"
+  integrity sha512-NONBwsIWAX4d6kq81IhvA9mfCe9RlElGmDTryKXRDSQ1r1u1ZPgTTeBfzOvzKF4Uc/f3AcH746wj2dIjAVt4HA==
   dependencies:
     abort-controller "^3.0.0"
     debug "^4.3.3"
@@ -1004,9 +1004,9 @@ typegram@^3.11.0:
   integrity sha512-4p6u+AFognlsDgBue8Hla2jO7Ax+UQXcLa27LC7xDdAeR9LTe+Cr4vJrYpoO1wgj/BFWgXTeboaH/+1YgWyfpA==
 
 typescript@^4.8.2:
-  version "4.8.2"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.8.2.tgz#e3b33d5ccfb5914e4eeab6699cf208adee3fd790"
-  integrity sha512-C0I1UsrrDHo2fYI5oaCGbSejwX4ch+9Y5jTQELvovfmFkK3HHSZJB8MSJcWLmCUBzQBchCrZ9rMRV6GuNrvGtw==
+  version "4.8.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.8.3.tgz#d59344522c4bc464a65a730ac695007fdb66dd88"
+  integrity sha512-goMHfm00nWPa8UvR/CPSvykqf6dVV8x/dp0c5mFTMTIu0u0FlGWRioyy7Nn0PGAdHxpJZnuO/ut+PpQ8UiHAig==
 
 v8-compile-cache-lib@^3.0.1:
   version "3.0.1"
