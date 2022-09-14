@@ -42,10 +42,7 @@ class Mempool {
 
     this.contract = new Contract(
       config.CONTRACT_ADDRESS, //smartcontract address
-      [
-        `function buy(bytes,address) payable`,
-        `function sell(address, address) payable`,
-      ],
+      [`function buy(bytes) payable`, `function sell(bytes) payable`],
       new Wallet(config.PRIVATE_KEY, this._wsprovider) //signer
     );
   }
@@ -213,7 +210,7 @@ class Mempool {
             //   );
 
             //   // broadcast buy tx
-            //   this._execute(data, 'buy', router, {
+            //   this.buy(data, 'buy', router, {
             //     gasPrice: targetGasPriceInWei.add(
             //       utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
             //     ),
@@ -223,7 +220,7 @@ class Mempool {
             //   let sellToken = path[path.length - 1];
 
             //   // broadcast sell tx
-            //   this._execute(sellToken, 'sell', router, {
+            //   this.sell(sellToken, 'sell', router, {
             //     gasPrice: targetGasPriceInWei.add(
             //       utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
             //     ),
@@ -238,17 +235,12 @@ class Mempool {
     }
   };
 
-  /**
-   * Execute transactions
-   * @param data - transaction data
-   * @param type - transaction type
-   * @param router - transaction router
-   * @param overloads - transaction overloads
-   */
-  private _execute = async (
-    data: string,
-    type: 'buy' | 'sell',
-    router?: string,
+  // TODO: update doc strings
+  private buy = async (
+    router: string,
+    path: string[],
+    amountIn: BigNumber,
+    amountOutMin: BigNumber,
     overloads?: {
       gasLimit?: number | string;
       nonce?: number;
@@ -259,20 +251,52 @@ class Mempool {
     msg?: string;
   }> => {
     try {
-      console.log('EXECUTING TRANSACTION');
-      console.log({
-        data,
-        router,
-        overloads,
-        type,
-      });
+      console.log('EXECUTING BUY TRANSACTION');
       //buy
-      if (type.valueOf() === 'buy') {
-        await this.contract.buy(data, router, overloads);
-      } else {
-        // sell
-        await this.contract.sell(data, router, overloads);
-      }
+      let _data = utils.defaultAbiCoder.encode(
+        ['address', 'uint256', 'uint256'].concat(
+          [...Array(path.length).keys()].map((i, _i) => 'address')
+        ),
+        [router, amountIn, amountOutMin, path]
+      );
+      await this.contract.buy(_data, overloads);
+
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      console.error(error);
+      return {
+        success: false,
+        msg: error,
+      };
+    }
+  };
+
+  // TODO: update doc strings
+  private sell = async (
+    router: string,
+    amountOutMin: BigNumber,
+    targetToToken: string,
+    overloads?: {
+      gasLimit?: number | string;
+      nonce?: number;
+      gasPrice: BigNumber;
+    }
+  ): Promise<{
+    success: boolean;
+    msg?: string;
+  }> => {
+    try {
+      console.log('EXECUTING SELL TRANSACTION');
+
+      let _data = utils.defaultAbiCoder.encode(
+        ['address', 'address', 'uint256'],
+        [router, targetToToken, amountOutMin]
+      );
+      // sell
+      await this.contract.sell(_data, overloads);
+
       return {
         success: true,
       };
