@@ -126,8 +126,11 @@ contract ContractTest is Test {
         // SELL TOKEN
 
         sandWicher.sell(
-            router, // router
-            address(toToken) // token to sell
+            abi.encode(
+                router, // router
+                address(toToken), // token to sell
+                0
+            )
         );
         assertEq(toToken.balanceOf(address(sandWicher)), 0);
 
@@ -143,6 +146,6 @@ contract ContractTest is Test {
         sandWicher.buy("0x0");
 
         vm.expectRevert("Ownable: caller is not the owner");
-        sandWicher.sell(router, address(token));
+        sandWicher.sell("0x0");
     }
 }

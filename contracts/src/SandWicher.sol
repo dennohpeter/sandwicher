@@ -49,22 +49,25 @@ contract SandWicher is Ownable, ReentrancyGuard {
      * Sells  tokens
      * Balance of tokens we are selling to be gt > 0
      */
-    function sell(address router, address _fromToken)
+    function sell(bytes calldata _data)
         external
         payable
         onlyOwner
         nonReentrant
     {
-        IERC20 fromToken = IERC20(_fromToken);
-        uint256 amountIn = fromToken.balanceOf(address(this));
-        uint256 amountOutMin = 0;
+        (address router, address fromToken, uint256 amountOutMin) = abi.decode(
+            _data,
+            (address, address, uint256)
+        );
+
+        uint256 amountIn = IERC20(fromToken).balanceOf(address(this));
 
         require(amountIn > 0, "!BAL");
 
-        _approve(fromToken, router, amountIn);
+        _approve(IERC20(fromToken), router, amountIn);
 
         address[] memory path = new address[](2);
-        path[0] = _fromToken;
+        path[0] = fromToken;
         path[1] = WBNB;
 
         IPancakeRouter02(router)
