@@ -120,14 +120,14 @@ class Mempool {
           if (
             this.isStableToken(targetFromToken)
               ? targetAmountInWei.gt(
-                  utils.parseUnits(
-                    config.MIN_USD_AMOUNT.toString(),
-                    this.decimals(targetFromToken)
-                  )
+                utils.parseUnits(
+                  config.MIN_USD_AMOUNT.toString(),
+                  this.decimals(targetFromToken)
                 )
+              )
               : targetAmountInWei.gt(
-                  utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
-                )
+                utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
+              )
           ) {
             console.log({
               router,
@@ -187,49 +187,58 @@ class Mempool {
             // let profitInTargetFromToken = newExecutionPrice * profitInTargetToToken
 
             // if (targetSlippage > config.MINIMUM_SLIPPAGE_AMOUNT) {
-            //   let opts: {
-            //     amountOutMin?: BigNumber;
-            //     amountIn?: BigNumber;
-            //   } = {};
 
-            //   let args = {
-            //     ...opts,
-            //     path,
-            //     router,
-            //     deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
-            //   };
+            // let attackBuyAmount = targetAmountInWei.mul(targetSlippage).mul(config.PERCENTAGE_TO_TAKE)
 
-            //   // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
-            //   targetGasPriceInWei =
-            //     targetGasPriceInWei || ethers.constants.Zero;
+            // console.log("ATTACK BUY AMOUNT", utils.formatEther(attackBuyAmount));
 
-            //   let data = this._pancakeSwap.encodeFunctionData(
-            //     targetMethodName,
-            //     Object.values(args)
-            //   );
 
-            //   let nonce = await this._provider.getTransactionCount(
-            //     config.PUBLIC_KEY
-            //   );
+            let opts: {
+              amountOutMin?: BigNumber;
+              amountIn?: BigNumber;
+            } = {};
 
-            //   // broadcast buy tx
-            //   this._execute(data, 'buy', router, {
-            //     gasPrice: targetGasPriceInWei.add(
-            //       utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-            //     ),
-            //     nonce,
-            //   });
+            let args = {
+              ...opts,
+              path,
+              router,
+              deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
+            };
 
-            //   let sellToken = path[path.length - 1];
+            // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+            targetGasPriceInWei =
+              targetGasPriceInWei || ethers.constants.Zero;
 
-            //   // broadcast sell tx
-            //   this._execute(sellToken, 'sell', router, {
-            //     gasPrice: targetGasPriceInWei.add(
-            //       utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-            //     ),
-            //     nonce: nonce + 1,
-            //   });
+            let data = this._pancakeSwap.encodeFunctionData(
+              targetMethodName,
+              Object.values(args)
+            );
+
+            let nonce = await this._provider.getTransactionCount(
+              config.PUBLIC_KEY
+            );
+
+            // broadcast buy tx
+            this._execute(data, 'buy', router, {
+              gasPrice: targetGasPriceInWei.add(
+                utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+              ),
+              nonce,
+            });
+
+            let sellToken = path[path.length - 1];
+
+            // broadcast sell tx
+            this._execute(sellToken, 'sell', router, {
+              gasPrice: targetGasPriceInWei.add(
+                utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+              ),
+              nonce: nonce + 1,
+            });
+
             // }
+
+
           }
         }
       } catch (error) {
@@ -291,8 +300,8 @@ class Mempool {
   private decimals = (address: string) =>
     this.isStableToken(address)
       ? Object.values(config.SUPPORTED_BUY_TOKENS).find(
-          (t) => t.address.toLowerCase() === address.toLowerCase()
-        )?.decimals || 6 // fallback to 6 decimals
+        (t) => t.address.toLowerCase() === address.toLowerCase()
+      )?.decimals || 6 // fallback to 6 decimals
       : 18;
 
   private getAmountsOut = async (

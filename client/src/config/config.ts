@@ -82,6 +82,9 @@ export const config = {
     },
   },
 
+  ///////////////////// PERCENTAGE_TO_TAKE////////////
+  PERCENTAGE_TO_TAKE: 0.5,
+
   ///////////////////WHITELISTED_USERS OF THE BOT //////////
   WHITELISTED_USERS: [""],
 
