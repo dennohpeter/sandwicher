@@ -181,6 +181,10 @@ class Mempool {
 
             let profitInTargetFromToken = newExecutionPrice * profitInTargetToToken
 
+            //TODO  revisit and check this calculation
+
+            // let buyAttackAmount = ( targetSlippage * targetAmountInWei ) * config.PERCENTAGE_TO_TAKE
+
             console.log(
               {
                 profitInTargetToToken,
