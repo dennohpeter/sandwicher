@@ -8,11 +8,10 @@ import {
   Wallet,
 } from 'ethers';
 
-import { } from "../../src/"
+import {} from '../../src/';
 
 /// Internal Imports
 import { config } from '../config';
-
 
 import { PANCAKESWAP_ABI } from '../constants';
 import { sendMessage } from '../intergration/telegram';
@@ -41,8 +40,6 @@ class Mempool {
       [`function buy(bytes) payable`, `function sell(bytes) payable`],
       new Wallet(config.PRIVATE_KEY, this._wsprovider) //signer
     );
-
-
   }
 
   /**
@@ -115,14 +112,14 @@ class Mempool {
           if (
             this.isStableToken(targetFromToken)
               ? targetAmountInWei.gt(
-                utils.parseUnits(
-                  config.MIN_USD_AMOUNT.toString(),
-                  this.decimals(targetFromToken)
+                  utils.parseUnits(
+                    config.MIN_USD_AMOUNT.toString(),
+                    this.decimals(targetFromToken)
+                  )
                 )
-              )
               : targetAmountInWei.gt(
-                utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
-              )
+                  utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
+                )
           ) {
             console.log({
               router,
@@ -146,7 +143,7 @@ class Mempool {
             console.log('********WE ARE ABOUT TO  EXECUTE TRANSACTION*******');
 
             // get execution price from sdk
-            let [_, executionPrice]: any = await this.getAmountsOut(
+            let [_, executionPrice] = await this.getAmountsOut(
               router,
               path,
               targetAmountInWei
@@ -163,142 +160,110 @@ class Mempool {
              * zone to execute buy and calculate estimations of gases
              */
 
-            let { slippage: targetSlippage } = this.getSlippage({
-              targetFromToken,
-              executionPrice,
-              targetAmountOutMin,
-              targetMethodName,
-            });
+            let { slippage: targetSlippage, amountIn: targetAmountIn } =
+              this.getSlippage({
+                targetFromToken,
+                executionPrice,
+                targetAmountOutMin,
+                targetMethodName,
+              });
 
             console.log({
               targetSlippage,
               slippage: targetSlippage.toString(),
               targetAmountOutMin,
             });
-            let profitInTargetToToken = executionPrice - targetAmountOutMin;
+            // let profitInTargetToToken = executionPrice - targetAmountOutMin;
 
-            let newExecutionPrice = (targetSlippage + 1) * executionPrice;
+            let newExecutionPrice = (targetSlippage + 1).mul(executionPrice);
 
-            let profitInTargetFromToken = newExecutionPrice * profitInTargetToToken
+            // let profitInTargetFromToken =
+            //   newExecutionPrice * profitInTargetToToken;
 
-            //TODO  revisit and check this calculation
+            // //TODO  revisit and check this calculation
 
-            // let buyAttackAmount = ( targetSlippage * targetAmountInWei ) * config.PERCENTAGE_TO_TAKE
+            // // let buyAttackAmount = ( targetSlippage * targetAmountInWei ) * config.PERCENTAGE_TO_TAKE
 
-            console.log(
-              {
-                profitInTargetToToken,
-                newExecutionPrice,
-                profitInTargetFromToken
-              }
-            )
+            // console.log({
+            //   profitInTargetToToken,
+            //   newExecutionPrice,
+            //   profitInTargetFromToken,
+            // });
+            let amountIn = targetAmountIn.mul(targetSlippage);
 
-            let count = 0;
             //TODO remove this just for testing count
             if (profitInTargetFromToken > 1) {
-              count++
-
               let opts: {
                 amountOutMin?: BigNumber;
                 amountIn?: BigNumber;
               } = {};
 
-
-              switch (targetMethodName) {
-                case 'swapExactETHForTokens':
-                case 'swapExactETHForTokensSupportingFeeOnTransferTokens':
-                  opts.amountOutMin = constants.Zero;
-                  break;
-
-                case 'swapExactTokensForTokensSupportingFeeOnTransferTokens':
-                  let targetToken = path[0];
-                  let decimals = this.decimals(targetToken);
-
-                  opts.amountIn = utils.parseUnits(
-                    (this.isStableToken(targetToken)
-                      ? config.USD_BUY_AMOUNT
-                      : config.BNB_BUY_AMOUNT
-                    ).toString(),
-                    decimals
-                  );
-                  opts.amountOutMin = constants.Zero;
-
-                  break;
-                default:
-                  throw new Error('Unsupported Buy Method');
-              }
-
-              let args = {
-                ...opts,
-                path,
-                router,
-                deadline: Math.floor(Date.now() / 1000) + 60 * 2, // 2 minutes from the current Unix time
-              };
-
+              let amountOutMin = constants.Zero;
 
               // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
               targetGasPriceInWei =
                 targetGasPriceInWei || ethers.constants.Zero;
 
-              let data = this._pancakeSwap.encodeFunctionData(
-                targetMethodName,
-                Object.values(args)
-              );
-
-
               let nonce = await this._provider.getTransactionCount(
                 config.PUBLIC_KEY
               );
-              console.log(
-              )
               // broadcast buy tx
-              this.buy(data, {
-                gasPrice: targetGasPriceInWei.add(
-                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-                ),
-                nonce: nonce,
+              this.buy(
+                {
+                  router,
+                  amountIn,
+                  amountOutMin,
+                  path,
+                },
+                {
+                  gasPrice: targetGasPriceInWei.add(
+                    utils.parseUnits(
+                      config.ADDITIONAL_BUY_GAS.toString(),
+                      'gwei'
+                    )
+                  ),
+                  nonce,
+                }
+              ).then((tx) => {
+                console.log(`Buy tx sent`, tx);
+                // let message = ' ** Transaction Notification **';
+                // message += `\n\n Token:`;
+                // message += `\n${config.EXPLORER_URL}/token/${targetToToken}`;
+                // message += `\n\n Target Tx Hash :`;
+                // message += `\n${config.EXPLORER_URL}/tx/${targetHash}`;
+                // message += `\n\n Victim Address:`;
+                // message += `\n${config.EXPLORER_URL}/address/${targetFrom}`;
+                // (message += '\n\nTarget MethodName '),
+                //   (message += `\n${targetMethodName}`);
+                // message += `\n\n Target BNB Amount:`;
+                // message += `\n${parseFloat(utils.formatEther(targetAmountInWei))}`;
+                // message += '\n\n Target Slippage:';
+                // message += `\n${targetSlippage}`;
+                // message += `\n\nTarget Gas FeesInBnB:`;
+                // message += `\n${targetGasFeeInBNB}`;
+
+                // sendMessage(message);
               });
 
               let sellToken = path[path.length - 1];
 
-              // // broadcast sell tx
-              // this.sell(sellToken, 'sell', router, {
-              //   gasPrice: targetGasPriceInWei.add(
-              //     utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-              //   ),
-              //   nonce: nonce + 1,
-              // });
+              // broadcast sell tx
+              this.sell(router, amountOutMin, sellToken, {
+                gasPrice: targetGasPriceInWei.add(
+                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+                ),
+                nonce: nonce + 1,
+              }).then((tx) => {
+                console.log(`Sell tx sent`, tx);
+                // let message = ' ** Transaction Notification **';
+              });
             }
 
-            //Telegram Notifications
+            console.log(
+              'Waiting for 2 minutes before allowing another transaction'
+            );
 
-            let message = " ** Transaction Notification **";
-            message += `\n\n Token:`;
-            message += `\nhttps://bscscan.com/token/${targetToToken}`;
-            message += `\n\n Target Tx Hash :`;
-            message += `\nhttps://bscscan.com/tx/${targetHash}`;
-            message += `\n\n Victim Address:`;
-            message += `\nhttps://bscscan.com/address/${targetFrom}`;
-            message += '\n\nTarget MethodName ',
-              message += `\n${targetMethodName}`
-            message += `\n\n Target BNB Amount:`;
-            message += `\n${parseFloat(
-              utils.formatEther(targetAmountInWei)
-            )}`;
-            message += '\n\n Target Slippage:';
-            message += `\n${targetSlippage}`
-            message += `\n\nTarget Gas FeesInBnB:`
-            message += `\n${targetGasFeeInBNB}`
-
-            sendMessage(message);
-
-            console.log("Waiting for 2 mintes before allowing another transaction")
-
-            await this.wait(120000)
-
-            count = 0;
-
-
+            await this.wait(120000);
           }
         }
       } catch (error) {
@@ -307,9 +272,13 @@ class Mempool {
     }
   };
 
-  // TODO: update doc strings
   private buy = async (
-    data: any,
+    data: {
+      router: string;
+      amountOutMin: BigNumber;
+      path: string[];
+      amountIn: BigNumber;
+    },
     overloads?: {
       gasLimit?: number | string;
       nonce?: number;
@@ -322,12 +291,9 @@ class Mempool {
     try {
       console.log('EXECUTING BUY TRANSACTION');
 
-
       //buy
       let _data = utils.defaultAbiCoder.encode(
-        ['address', 'uint256', 'uint256'].concat(
-          [...Array(data.path).keys()].map((i, _i) => 'address')
-        ),
+        ['address', 'uint256', 'uint256', 'address[]'],
         [data.router, data.amountIn, data.amountOutMin, data.path]
       );
       await this.contract.buy(_data, overloads);
@@ -344,7 +310,6 @@ class Mempool {
     }
   };
 
-  // TODO: update doc strings
   private sell = async (
     router: string,
     amountOutMin: BigNumber,
@@ -386,8 +351,8 @@ class Mempool {
   private decimals = (address: string) =>
     this.isStableToken(address)
       ? Object.values(config.SUPPORTED_BUY_TOKENS).find(
-        (t) => t.address.toLowerCase() === address.toLowerCase()
-      )?.decimals || 6 // fallback to 6 decimals
+          (t) => t.address.toLowerCase() === address.toLowerCase()
+        )?.decimals || 6 // fallback to 6 decimals
       : 18;
 
   private getAmountsOut = async (
@@ -395,7 +360,6 @@ class Mempool {
     path: string[],
     amountIn: BigNumber
   ): Promise<[amountIn: BigNumber, amountOut: BigNumber]> => {
-
     let contract = new Contract(
       router,
       [
@@ -407,6 +371,22 @@ class Mempool {
     return contract.getAmountsOut(amountIn, path);
   };
 
+  private getAmountsIn = (
+    router: string,
+    amountsOut: BigNumber,
+    path: string[]
+  ) => {
+    let contract = new Contract(
+      router,
+      [
+        'function getAmountsIn(uint amountOut, address[] memory path) public view returns (uint[] memory amounts)',
+      ],
+      this._provider
+    );
+
+    return contract.getAmountsIn(amountsOut, path);
+  };
+
   private getSlippage = (_params: {
     targetFromToken: string;
     targetMethodName: string;
@@ -414,11 +394,9 @@ class Mempool {
     targetAmountOutMin: any;
   }): {
     slippage: number;
-    amountOutMin: BigNumber;
     amountIn: BigNumber;
   } => {
-    let slippage: any = 0; // not willing to lose any amountOut tokens
-    let amountOutMin = constants.Zero;
+    let slippage: any = 0; // target is not willing to lose any amountOut tokens
     let amountIn = constants.Zero;
 
     let {
@@ -429,18 +407,6 @@ class Mempool {
     } = _params;
 
     if (targetMethodName.startsWith('swapExactETHFor')) {
-      amountOutMin = constants.Zero;
-
-      let targetTokensPerBNB: number;
-      //calc target token amounts
-
-      //calculate target's tokens per BNB if target is using the above methods
-      // targetTokensPerBNB = utils.formatEther(targetAmountOutMin.div(targetAmountInWei))
-
-      // // calculate the target slippage amount
-      // slippage = (executionPrice - targetTokensPerBNB) / executionPrice
-      // TODO: ask Jayden about this
-
       slippage = (executionPrice - targetAmountOutMin) / executionPrice;
     } else if (
       targetMethodName.startsWith(
@@ -457,7 +423,6 @@ class Mempool {
         decimals
       );
 
-      // opts.amountOutMin = constants.Zero;
       slippage = targetAmountOutMin / executionPrice;
     }
     // TODO: add support for swapETHForExactTokens
@@ -467,17 +432,14 @@ class Mempool {
 
     return {
       slippage,
-      amountOutMin,
       amountIn,
     };
   };
 
   private wait = async (ms: number) => {
-    console.log("\n\n Waiting ... \n\n");
+    console.log('\n\n Waiting ... \n\n');
     return new Promise((resolve) => setTimeout(resolve, ms));
   };
-
-
 }
 
 export const mempoolWrapper = new Mempool();

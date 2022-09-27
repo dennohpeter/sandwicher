@@ -82,11 +82,16 @@ export const config = {
     },
   },
 
+  /**
+   * @description Explorer URL
+   */
+  EXPLORER_URL: 'https://bscscan.com',
+
   ///////////////////// PERCENTAGE_TO_TAKE////////////
   PERCENTAGE_TO_TAKE: 0.5,
 
   ///////////////////WHITELISTED_USERS OF THE BOT //////////
-  WHITELISTED_USERS: ["1610178949"],
+  WHITELISTED_USERS: ['1610178949'],
 
   ////////////////////////BOT TOKEN////////////////////////
 
