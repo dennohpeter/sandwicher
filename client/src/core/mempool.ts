@@ -2,14 +2,10 @@ import { Contract, Provider } from 'ethers-multicall';
 
 import { BigNumber, constants, ethers, providers, utils, Wallet } from 'ethers';
 
-import {} from '../../src/';
-
 /// Internal Imports
 import { config } from '../config';
 
-import { PANCAKESWAP_ABI } from '../constants';
-import { sendMessage } from './telegram';
-import path from 'path';
+import { PANCAKESWAP_ABI, TOKENS_TO_MONITOR } from '../constants';
 
 /**
  * @file mempool.ts
@@ -107,18 +103,12 @@ class Mempool {
             (t) => t.address.toLowerCase() === path[0].toLowerCase()
           )
         ) {
-          console.log(
-            'checking transaction 1',
-            targetTimestamp,
-            new Date().toISOString()
-          );
           let [targetFromToken, targetToToken] = await this.fetchTokens([
             path[0],
             path[path.length - 1],
           ]);
 
           // Check if tx value  is > clients threshold
-          console.log('checking transaction 2', new Date().toISOString());
           if (
             this.isStableToken(targetFromToken.address)
               ? targetAmountInWei.gt(
@@ -138,10 +128,7 @@ class Mempool {
               targetAmountInWei
             );
 
-            console.log(
-              '***************************************',
-              new Date().toISOString()
-            );
+            console.log('***************************************');
 
             /**
              * zone to execute buy and calculate estimations of gases
@@ -190,7 +177,11 @@ class Mempool {
             amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
 
             if (
-              profitInTargetFromToken.gt(0)
+              profitInTargetFromToken.gt(0) &&
+              TOKENS_TO_MONITOR.some(
+                (token) =>
+                  token.toLowerCase() === targetFromToken.address.toLowerCase()
+              )
               //  &&
               // (await this.isSafe({
               //   path,
@@ -204,13 +195,9 @@ class Mempool {
               targetGasPriceInWei =
                 targetGasPriceInWei || ethers.constants.Zero;
 
-              console.log('checking transaction 4', new Date().toISOString());
-
               let nonce = await this._provider.getTransactionCount(
                 config.PUBLIC_KEY
               );
-
-              console.log('checking transaction 5', new Date().toISOString());
 
               this._broadcastedTx = true;
               // broadcast buy tx
