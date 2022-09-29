@@ -417,6 +417,7 @@ class Mempool {
       return true;
     } catch (error: any) {
       console.error(error);
+      console.log(`Token ${params.targetToToken.address} is not safe`);
     }
     return false;
   };
