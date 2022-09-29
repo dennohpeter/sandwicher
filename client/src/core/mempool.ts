@@ -407,7 +407,7 @@ class Mempool {
       path.reverse();
 
       await contract.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(
-        utils.formatUnits('10', params.targetToToken.decimals),
+        utils.parseUnits('10', params.targetToToken.decimals),
         amountOutMin,
         path,
         config.PUBLIC_KEY,
