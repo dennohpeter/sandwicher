@@ -184,12 +184,11 @@ class Mempool {
               if (
                 !TOKENS_TO_MONITOR.some(
                   (token) =>
-                    token.toLowerCase() ===
-                    targetFromToken.address.toLowerCase()
+                    token.toLowerCase() === targetToToken.address.toLowerCase()
                 )
               ) {
                 console.log(
-                  `${targetFromToken.address} is not in the list of tokens to monitor`
+                  `${targetToToken.address} is not in the list of tokens to monitor`
                 );
                 return;
               }
