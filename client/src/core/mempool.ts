@@ -190,12 +190,13 @@ class Mempool {
             amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
 
             if (
-              profitInTargetFromToken.gt(0) &&
-              (await this.isSafe({
-                path,
-                router,
-                amountIn,
-              }))
+              profitInTargetFromToken.gt(0)
+              //  &&
+              // (await this.isSafe({
+              //   path,
+              //   router,
+              //   amountIn,
+              // }))
             ) {
               let amountOutMin = constants.Zero;
 
