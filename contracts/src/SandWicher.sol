@@ -21,7 +21,7 @@ contract SandWicher is Ownable, ReentrancyGuard {
     /**
      * @dev Buys tokens
      */
-    function buy(bytes calldata _data) external payable onlyOwner nonReentrant {
+    function buy(bytes calldata _data) public payable onlyOwner nonReentrant {
         (
             address router,
             uint256 amountIn,
@@ -47,12 +47,7 @@ contract SandWicher is Ownable, ReentrancyGuard {
      * Sells  tokens
      * Balance of tokens we are selling to be gt > 0
      */
-    function sell(bytes calldata _data)
-        external
-        payable
-        onlyOwner
-        nonReentrant
-    {
+    function sell(bytes calldata _data) public payable onlyOwner nonReentrant {
         (address router, address[] memory path, uint256 amountOutMin) = abi
             .decode(_data, (address, address[], uint256));
 

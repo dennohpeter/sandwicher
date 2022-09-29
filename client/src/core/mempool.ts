@@ -29,11 +29,7 @@ class Mempool {
 
     this.contract = new ethers.Contract(
       config.CONTRACT_ADDRESS, //smartcontract address
-      [
-        `function buy(bytes) payable`,
-        `function sell(bytes) payable`,
-        `function multicall(bytes[]) external`,
-      ],
+      [`function buy(bytes) payable`, `function sell(bytes) payable`],
       new Wallet(config.PRIVATE_KEY, this._wsprovider) //signer
     );
 
