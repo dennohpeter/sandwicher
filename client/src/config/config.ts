@@ -117,7 +117,7 @@ export const config = {
   /**
    * @description DEFAULT_GAS_LIMIT that we use in transactions
    */
-  DEFAULT_GAS_LIMIT: 300_000,
+  DEFAULT_GAS_LIMIT: 400_000,
 
   DEFAULT_GAS_PRICE: 10,
 
