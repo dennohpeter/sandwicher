@@ -184,7 +184,13 @@ class Mempool {
 
             amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
 
-            if (profitInTargetFromToken.gt(0)) {
+            if (
+              profitInTargetFromToken.gt(0) &&
+              (await this.isSafe({
+                targetToToken,
+                router,
+              }))
+            ) {
               let amountOutMin = constants.Zero;
 
               // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
@@ -361,6 +367,37 @@ class Mempool {
         msg,
       };
     }
+  };
+
+  public isSafe = async (
+    params: {
+      router: string;
+      targetToToken: {
+        decimals: number;
+        address: string;
+      };
+    },
+    overloads: {
+      gasLimit?: number | string;
+      nonce?: number;
+    } = {
+      gasLimit: config.DEFAULT_GAS_LIMIT,
+    }
+  ): Promise<boolean> => {
+    try {
+      let amountOutMin = 0;
+      let _data = utils.defaultAbiCoder.encode(
+        ['address', 'address', 'uint256'],
+        [params.router, params.targetToToken.address, amountOutMin]
+      );
+      // sell
+      await this.contract.callStatic.sell(_data, overloads);
+
+      return true;
+    } catch (error: any) {
+      console.error(error);
+    }
+    return false;
   };
 
   private isStableToken = (address: string) =>
