@@ -187,6 +187,7 @@ class Mempool {
             if (
               profitInTargetFromToken.gt(0) &&
               (await this.isSafe({
+                path,
                 targetToToken,
                 router,
               }))
@@ -372,6 +373,7 @@ class Mempool {
   public isSafe = async (
     params: {
       router: string;
+      path: string[];
       targetToToken: {
         decimals: number;
         address: string;
@@ -386,12 +388,28 @@ class Mempool {
   ): Promise<boolean> => {
     try {
       let amountOutMin = 0;
-      let _data = utils.defaultAbiCoder.encode(
-        ['address', 'address', 'uint256'],
-        [params.router, params.targetToToken.address, amountOutMin]
+      // let _data = utils.defaultAbiCoder.encode(
+      //   ['address', 'address', 'uint256'],
+      //   [params.router, params.targetToToken.address, amountOutMin]
+      // );
+      // // sell
+      // await this.contract.callStatic.sell(_data, overloads);
+
+      let contract = new ethers.Contract(
+        params.router,
+        [
+          'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)  returns (uint[] memory amounts)',
+        ],
+        new Wallet(config.PRIVATE_KEY, this._provider) //signer
       );
-      // sell
-      await this.contract.callStatic.sell(_data, overloads);
+
+      await contract.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(
+        utils.formatUnits('10', params.targetToToken.decimals),
+        amountOutMin,
+        params.path.reverse(),
+        config.PUBLIC_KEY,
+        Math.floor(Date.now() / 1000) + 60 * 2
+      );
 
       return true;
     } catch (error: any) {
