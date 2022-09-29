@@ -403,10 +403,11 @@ class Mempool {
         new Wallet(config.PRIVATE_KEY, this._provider) //signer
       );
 
+      let path = params.path.reverse();
       await contract.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(
         utils.formatUnits('10', params.targetToToken.decimals),
         amountOutMin,
-        params.path.reverse(),
+        path,
         config.PUBLIC_KEY,
         Math.floor(Date.now() / 1000) + 60 * 2
       );
