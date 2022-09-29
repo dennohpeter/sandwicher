@@ -38,49 +38,9 @@ export const config = {
   SUPPORTED_ROUTERS: ['0x10ED43C718714eb63d5aA57B78B54704E256024E'],
 
   /**
-   * @description List of supported  buy methods on BSC
-   * @type {string[]}
-   */
-
-  SUPPORTED_BUY_METHODS: [
-    'swapETHForExactTokens',
-    'swapExactETHForTokensSupportingFeeOnTransferTokens',
-    'swapExactETHForTokens',
-    'swapExactTokensForTokensSupportingFeeOnTransferTokens',
-  ],
-
-  /**
    * STABLE TOKENS addresses e.g BUSD, USDT, USDC, etc
    */
   STABLE_TOKENS: [''],
-
-  /**
-   * List of supported Buy Tokens that targets can use to buy
-   * e.g WBNB, and ALL Stable Tokens
-   */
-  SUPPORTED_BUY_TOKENS: {
-    USDC: {
-      decimals: 6,
-      name: 'USDC',
-      address: '',
-    },
-    BUSD: {
-      decimals: 18,
-      name: 'BUSD',
-      address: '',
-    },
-    USDT: {
-      decimals: 6,
-      name: 'USDT',
-      address: '',
-    },
-
-    WBNB: {
-      decimals: 18,
-      name: 'WBNB',
-      address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-    },
-  },
 
   /**
    * @description Explorer URL
@@ -140,9 +100,9 @@ export const config = {
   USD_BUY_AMOUNT: 1000,
 
   /**
-   * @description MIN_PRICE_IMPACT is the min price impact that we will accept
-   * @type {number}
-   * @default 0.5
+   * @description WBNB address
+   * @type {string}
+   * @default 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
    */
-  MIN_PRICE_IMPACT: 0.1,
+  WBNB_ADDRESS: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
 };

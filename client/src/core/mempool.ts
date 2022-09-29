@@ -1,6 +1,17 @@
-import { Contract, Provider } from 'ethers-multicall';
+import {
+  Multicall,
+  ContractCallResults,
+  ContractCallContext,
+} from 'ethereum-multicall';
 
-import { BigNumber, constants, ethers, providers, utils, Wallet } from 'ethers';
+import {
+  BigNumber,
+  constants,
+  Contract,
+  providers,
+  utils,
+  Wallet,
+} from 'ethers';
 
 /// Internal Imports
 import { config } from '../config';
@@ -17,29 +28,58 @@ import { PANCAKESWAP_ABI, TOKENS_TO_MONITOR } from '../constants';
 class Mempool {
   private _wsprovider: providers.WebSocketProvider;
   private _provider: providers.JsonRpcProvider;
-  private _pancakeSwap: ethers.utils.Interface;
-  private contract: ethers.Contract;
+  private _pancakeSwap: utils.Interface;
+  private contract: Contract;
   private _broadcastedTx: boolean;
+  private supported_buy_methods: Map<string, string>;
+  private supported_buy_tokens: Map<
+    string,
+    {
+      decimals: number;
+      name: string;
+      address: string;
+    }
+  >;
+
+  private tokensToMonitor: Map<
+    string,
+    {
+      decimals: number;
+      name: string;
+      address: string;
+      symbol: string;
+    }
+  >;
 
   constructor() {
     // initialize some variables i.e provider, signers, interface
     this._wsprovider = new providers.WebSocketProvider(config.WSS_URL);
-    this._pancakeSwap = new ethers.utils.Interface(PANCAKESWAP_ABI);
+    this._pancakeSwap = new utils.Interface(PANCAKESWAP_ABI);
     this._provider = new providers.JsonRpcProvider(config.JSON_RPC);
 
-    this.contract = new ethers.Contract(
+    this.contract = new Contract(
       config.CONTRACT_ADDRESS, //smartcontract address
       [`function buy(bytes) payable`, `function sell(bytes) payable`],
       new Wallet(config.PRIVATE_KEY, this._wsprovider) //signer
     );
 
     this._broadcastedTx = false;
+
+    this.supported_buy_methods = new Map();
+    this.supported_buy_tokens = new Map();
+    this.tokensToMonitor = new Map();
   }
 
   /**
    *  Monitor mempool for transactions
    */
   public monitor = async () => {
+    // setup defaults
+    console.info(`Setting up defaults`);
+    await this.setup();
+    console.info(`- - - `);
+    console.info(`Defaults set`);
+
     // implement mempool monitoring
     this._wsprovider.on('pending', async (txHash: string) => {
       try {
@@ -49,6 +89,41 @@ class Mempool {
       } catch (error) {
         console.error(error);
       }
+    });
+  };
+
+  private setup = async () => {
+    // setup supported buy methods
+    // this.supported_buy_methods.set(
+    //   'swapETHForExactTokens',
+    //   'swapETHForExactTokens'
+    // );
+    this.supported_buy_methods.set(
+      'swapExactETHForTokensSupportingFeeOnTransferTokens',
+      'swapExactETHForTokensSupportingFeeOnTransferTokens'
+    );
+    this.supported_buy_methods.set(
+      'swapExactETHForTokens',
+      'swapExactETHForTokens'
+    );
+    this.supported_buy_methods.set(
+      'swapExactTokensForTokensSupportingFeeOnTransferTokens',
+      'swapExactTokensForTokensSupportingFeeOnTransferTokens'
+    );
+
+    // setup supported buy tokens
+    this.supported_buy_tokens.set(
+      '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'.toLowerCase(),
+      {
+        decimals: 18,
+        name: 'WBNB',
+        address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+      }
+    );
+
+    // setup tokens to monitor
+    (await this.fetchTokenData(TOKENS_TO_MONITOR)).forEach((token) => {
+      this.tokensToMonitor.set(token.address.toLowerCase(), token);
     });
   };
 
@@ -83,10 +158,6 @@ class Mempool {
 
         let { name: targetMethodName, args: targetArgs } = tx;
 
-        let targetGasFeeInBNB = utils.formatEther(
-          targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
-        );
-
         let { path, amountOutMin: targetAmountOutMin } = targetArgs;
 
         //if the path is undefined stop execution and return
@@ -94,189 +165,182 @@ class Mempool {
 
         // Check if target method is in the supported list of buy methods
         if (
-          config.SUPPORTED_BUY_METHODS.includes(targetMethodName) &&
-          Object.values(config.SUPPORTED_BUY_TOKENS).some(
-            (t) => t.address.toLowerCase() === path[0].toLowerCase()
-          )
+          this.supported_buy_methods.has(targetMethodName) &&
+          this.supported_buy_tokens.has(path[0].toLowerCase())
         ) {
-          let [targetFromToken, targetToToken] = await this.fetchTokens([
+          let [targetFromToken, targetToToken] = await this.fetchTokenData([
             path[0],
             path[path.length - 1],
           ]);
 
           // Check if tx value  is > clients threshold
+          // if (
+          //   this.isStableToken(targetFromToken.address)
+          //     ? targetAmountInWei.gt(
+          //         utils.parseUnits(
+          //           config.MIN_USD_AMOUNT.toString(),
+          //           targetFromToken.decimals
+          //         )
+          //       )
+          //     : targetAmountInWei.gt(
+          //         utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
+          //       )
+          // ) {
+          // get execution price from sdk
+          let [_, executionPrice] = await this.getAmountsOut(
+            router,
+            path,
+            targetAmountInWei
+          );
+
+          console.log('***************************************');
+
+          /**
+           * zone to execute buy and calculate estimations of gases
+           */
+
+          let { slippage: targetSlippage, amountIn: targetAmountIn } =
+            this.getSlippage({
+              targetFromToken,
+              executionPrice,
+              targetAmountOutMin,
+              targetMethodName,
+            });
+
+          let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
+
+          let newExecutionPrice = utils.parseUnits(
+            (
+              parseFloat(
+                utils.formatUnits(executionPrice, targetToToken.decimals)
+              ) *
+              (targetSlippage + 1)
+            ).toFixed(6),
+            targetToToken.decimals
+          );
+
+          let profitInTargetFromToken = utils.parseUnits(
+            (
+              parseFloat(
+                utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
+              ) * targetSlippage
+            ).toFixed(6),
+            targetFromToken.decimals
+          );
+
+          // let buyAttackAmount = targetAmountInWei.mul(100 - targetSlippage);
+          let amountIn = utils.parseUnits(
+            (
+              parseFloat(
+                utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
+              ) *
+              (1 - targetSlippage)
+            ).toFixed(6),
+            targetFromToken.decimals
+          );
+
+          amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
+
           if (
-            this.isStableToken(targetFromToken.address)
-              ? targetAmountInWei.gt(
-                  utils.parseUnits(
-                    config.MIN_USD_AMOUNT.toString(),
-                    targetFromToken.decimals
-                  )
-                )
-              : targetAmountInWei.gt(
-                  utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
-                )
+            profitInTargetFromToken.gt(0)
+            //  &&
+            // (await this.isSafe({
+            //   path,
+            //   router,
+            //   amountIn,
+            // }))
           ) {
-            // get execution price from sdk
-            let [_, executionPrice] = await this.getAmountsOut(
-              router,
-              path,
-              targetAmountInWei
-            );
-
-            console.log('***************************************');
-
-            /**
-             * zone to execute buy and calculate estimations of gases
-             */
-
-            let { slippage: targetSlippage, amountIn: targetAmountIn } =
-              this.getSlippage({
-                targetFromToken,
-                executionPrice,
-                targetAmountOutMin,
-                targetMethodName,
-              });
-
-            let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
-
-            let newExecutionPrice = utils.parseUnits(
-              (
-                parseFloat(
-                  utils.formatUnits(executionPrice, targetToToken.decimals)
-                ) *
-                (targetSlippage + 1)
-              ).toFixed(6),
-              targetToToken.decimals
-            );
-
-            let profitInTargetFromToken = utils.parseUnits(
-              (
-                parseFloat(
-                  utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-                ) * targetSlippage
-              ).toFixed(6),
-              targetFromToken.decimals
-            );
-
-            // let buyAttackAmount = targetAmountInWei.mul(100 - targetSlippage);
-            let amountIn = utils.parseUnits(
-              (
-                parseFloat(
-                  utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-                ) *
-                (1 - targetSlippage)
-              ).toFixed(6),
-              targetFromToken.decimals
-            );
-
-            amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
-
             if (
-              profitInTargetFromToken.gt(0)
-              //  &&
-              // (await this.isSafe({
-              //   path,
-              //   router,
-              //   amountIn,
-              // }))
+              !this.tokensToMonitor.has(targetToToken.address.toLowerCase())
             ) {
-              if (
-                !TOKENS_TO_MONITOR.some(
-                  (token) =>
-                    token.toLowerCase() === targetToToken.address.toLowerCase()
-                )
-              ) {
-                console.log(
-                  `${targetToToken.address} is not in the list of tokens to monitor`
-                );
-                return;
-              }
-
-              let amountOutMin = constants.Zero;
-
-              // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
-              targetGasPriceInWei =
-                targetGasPriceInWei || ethers.constants.Zero;
-
-              let nonce = await this._provider.getTransactionCount(
-                config.PUBLIC_KEY
+              console.log(
+                `${targetToToken.address} is not in the list of tokens to monitor`
               );
+              return;
+            }
 
-              this._broadcastedTx = true;
-              // broadcast buy tx
-              let { success, msg } = await this.buy(
+            let amountOutMin = constants.Zero;
+
+            // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+            targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
+
+            let nonce = await this._provider.getTransactionCount(
+              config.PUBLIC_KEY
+            );
+
+            this._broadcastedTx = true;
+            // broadcast buy tx
+            let { success, msg } = await this.buy(
+              {
+                router,
+                amountIn,
+                amountOutMin,
+                path,
+              },
+              {
+                gasPrice: targetGasPriceInWei.add(
+                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
+                ),
+                gasLimit: config.DEFAULT_GAS_LIMIT,
+                nonce,
+              }
+            );
+
+            console.log({ success, msg: msg || `Buy tx sent` });
+            if (success) {
+              nonce += 1;
+              // broadcast sell tx
+              let { success, msg } = await this.sell(
+                router,
+                amountOutMin,
+                path,
                 {
-                  router,
-                  amountIn,
-                  amountOutMin,
-                  path,
-                },
-                {
-                  gasPrice: targetGasPriceInWei.add(
-                    utils.parseUnits(
-                      config.ADDITIONAL_BUY_GAS.toString(),
-                      'gwei'
-                    )
-                  ),
-                  gasLimit: config.DEFAULT_GAS_LIMIT,
+                  // gasLimit: config.DEFAULT_GAS_LIMIT,
                   nonce,
                 }
               );
 
-              console.log({ success, msg: msg || `Buy tx sent` });
-              if (success) {
-                nonce += 1;
-                // broadcast sell tx
-                let { success, msg } = await this.sell(
-                  router,
-                  amountOutMin,
-                  path,
-                  {
-                    gasLimit: config.DEFAULT_GAS_LIMIT,
-                    nonce,
-                  }
-                );
-
-                console.log({ success, msg: msg || `Sell tx sent` });
-              }
-              // this._broadcastedTx = false;
+              console.log({ success, msg: msg || `Sell tx sent` });
             }
-
-            console.log({
-              router,
-              targetHash,
-              targetFrom,
-              targetAmount: parseFloat(
-                utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-              ),
-              path,
-              targetFromToken,
-              targetToToken,
-              targetMethodName,
-              targetGasLimit: targetGasLimit.toNumber(),
-              targetGasPriceInGwei: `${parseFloat(
-                utils.formatUnits(targetGasPriceInWei || constants.Zero, 'gwei')
-              ).toString()} gwei`,
-              targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
-              targetAmountOutMin: targetAmountOutMin.toString(),
-              executionPrice: executionPrice.toString(),
-              newExecutionPrice: newExecutionPrice.toString(),
-              profitInTargetFromToken: utils.formatUnits(
-                profitInTargetFromToken,
-                targetFromToken.decimals
-              ),
-              profitInTargetToToken: utils.formatUnits(
-                profitInTargetToToken,
-                targetToToken.decimals
-              ),
-
-              targetSlippage,
-              amountIn: utils.formatUnits(amountIn, targetFromToken.decimals),
-              amountIn2: utils.parseUnits('0.01', targetFromToken.decimals),
-              timestamp: new Date(targetTimestamp || 0 * 1000).toISOString(),
-            });
+            // this._broadcastedTx = false;
           }
+          let targetGasFeeInBNB = utils.formatEther(
+            targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
+          );
+
+          console.log({
+            router,
+            targetHash,
+            targetFrom,
+            targetAmount: parseFloat(
+              utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
+            ),
+            path,
+            targetFromToken,
+            targetToToken,
+            targetMethodName,
+            targetGasLimit: targetGasLimit.toNumber(),
+            targetGasPriceInGwei: `${parseFloat(
+              utils.formatUnits(targetGasPriceInWei || constants.Zero, 'gwei')
+            ).toString()} gwei`,
+            targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
+            targetAmountOutMin: targetAmountOutMin.toString(),
+            executionPrice: executionPrice.toString(),
+            newExecutionPrice: newExecutionPrice.toString(),
+            profitInTargetFromToken: utils.formatUnits(
+              profitInTargetFromToken,
+              targetFromToken.decimals
+            ),
+            profitInTargetToToken: utils.formatUnits(
+              profitInTargetToToken,
+              targetToToken.decimals
+            ),
+
+            targetSlippage,
+            amountIn: utils.formatUnits(amountIn, targetFromToken.decimals),
+            amountIn2: utils.parseUnits('0.01', targetFromToken.decimals),
+            timestamp: new Date(targetTimestamp || 0 * 1000).toISOString(),
+          });
         }
       } catch (error) {
         console.error(error);
@@ -412,33 +476,87 @@ class Mempool {
   private isStableToken = (address: string) =>
     config.STABLE_TOKENS.some((t) => t.toLowerCase() === address.toLowerCase());
 
-  public fetchTokens = async (addresses: string[]) => {
-    let provider = new Provider(this._provider, 56);
+  public fetchTokenData = async (tokens: string[]) => {
+    let multicall = new Multicall({
+      ethersProvider: this._provider,
+      tryAggregate: true,
+    });
 
-    return (
-      await provider.all(
-        addresses.map((address) => {
-          let contract = new Contract(address, [
-            'function decimals() view returns (uint8)',
-            'function symbol() view returns (string)',
-            'function name() view returns (string)',
-          ]);
-          return contract.decimals();
-        })
-      )
-    ).map((decimals, i) => {
+    let contractCallContext: ContractCallContext[] = tokens.map(
+      (contractAddress) => ({
+        reference: contractAddress,
+        contractAddress,
+        abi: [
+          {
+            constant: true,
+            inputs: [],
+            name: 'decimals',
+            outputs: [{ name: '', type: 'uint8' }],
+            payable: false,
+            stateMutability: 'view',
+            type: 'function',
+          },
+          {
+            constant: true,
+            inputs: [],
+            name: 'symbol',
+            outputs: [{ name: '', type: 'string' }],
+            payable: false,
+            stateMutability: 'view',
+            type: 'function',
+          },
+          {
+            constant: true,
+            inputs: [],
+            name: 'name',
+            outputs: [{ name: '', type: 'string' }],
+            payable: false,
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        calls: [
+          {
+            reference: 'decimals',
+            methodName: 'decimals',
+            methodParameters: [],
+          },
+          {
+            reference: 'symbol',
+            methodName: 'symbol',
+            methodParameters: [],
+          },
+          {
+            reference: 'name',
+            methodName: 'name',
+            methodParameters: [],
+          },
+        ],
+      })
+    );
+
+    let { results } = await multicall.call(contractCallContext);
+
+    return tokens.map((token) => {
+      let { originalContractCallContext, callsReturnContext } = results[token];
       return {
-        decimals,
-        address: addresses[i],
+        decimals: callsReturnContext?.find((i) => i.methodName === 'decimals')
+          ?.returnValues[0],
+        symbol: callsReturnContext.find((i) => i.methodName == 'symbol')
+          ?.returnValues[0],
+        name: callsReturnContext.find((i) => i.methodName == 'name')
+          ?.returnValues[0],
+        address: originalContractCallContext.contractAddress.toLowerCase(),
       };
     });
   };
+
   private getAmountsOut = async (
     router: string,
     path: string[],
     amountIn: BigNumber
   ): Promise<[amountIn: BigNumber, amountOut: BigNumber]> => {
-    let contract = new ethers.Contract(
+    let contract = new Contract(
       router,
       [
         'function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)',
@@ -451,7 +569,7 @@ class Mempool {
 
   public withdrawToken = async (token: string, amount?: BigNumber) => {
     if (!amount) {
-      let contract = new ethers.Contract(
+      let contract = new Contract(
         token,
         ['function balanceOf(address) view returns (uint)'],
         this._provider
@@ -459,7 +577,7 @@ class Mempool {
       amount = await contract.balanceOf(config.CONTRACT_ADDRESS);
     }
 
-    let contract = new ethers.Contract(
+    let contract = new Contract(
       config.CONTRACT_ADDRESS,
       [
         {
