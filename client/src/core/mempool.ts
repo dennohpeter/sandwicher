@@ -403,7 +403,7 @@ class Mempool {
         new Wallet(config.PRIVATE_KEY, this._provider) //signer
       );
 
-      let path = params.path;
+      let path = [...params.path];
       path.reverse();
 
       await contract.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(
