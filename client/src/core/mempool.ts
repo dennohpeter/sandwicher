@@ -290,12 +290,13 @@ class Mempool {
             if (success) {
               nonce += 1;
               // broadcast sell tx
+              let sell_route = [...path].reverse();
               let { success, msg } = await this.sell(
                 router,
                 amountOutMin,
-                path,
+                sell_route,
                 {
-                  // gasLimit: config.DEFAULT_GAS_LIMIT,
+                  gasLimit: config.DEFAULT_GAS_LIMIT,
                   nonce,
                 }
               );
@@ -404,7 +405,6 @@ class Mempool {
     msg?: string;
   }> => {
     try {
-      path = [...path].reverse();
       console.log('EXECUTING SELL TRANSACTION', new Date().toISOString());
 
       let _data = utils.defaultAbiCoder.encode(
