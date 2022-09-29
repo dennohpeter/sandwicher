@@ -27,7 +27,7 @@ export const config = {
    * @description Contract address
    * @type {string}
    */
-  CONTRACT_ADDRESS: '0x0C40867BE119a0E8De576240F5d2a31bE45c7b67',
+  CONTRACT_ADDRESS: '0x5c76FD3779678A88d780Cf02261a3eFCa7E9A8e7',
 
   PUBLIC_KEY: process.env.PUBLIC_KEY!,
 
@@ -87,9 +87,6 @@ export const config = {
    */
   EXPLORER_URL: 'https://bscscan.com',
 
-  ///////////////////// PERCENTAGE_TO_TAKE////////////
-  PERCENTAGE_TO_TAKE: 0.5,
-
   ///////////////////WHITELISTED_USERS OF THE BOT //////////
   WHITELISTED_USERS: ['1610178949'],
 
@@ -102,7 +99,7 @@ export const config = {
    * @description MIN_BNB_AMOUNT is the min amount of BNB that can be swapped
    *
    */
-  MIN_BNB_AMOUNT: 1,
+  MIN_BNB_AMOUNT: 10,
 
   ////////////////// SLIPPAGE CONFIGS ////////////////
   /***
@@ -120,14 +117,14 @@ export const config = {
   /**
    * @description DEFAULT_GAS_LIMIT that we use in transactions
    */
-  DEFAULT_GAS_LIMIT: 300000,
+  DEFAULT_GAS_LIMIT: 300_000,
 
   DEFAULT_GAS_PRICE: 10,
 
   /**
    * @description ADDITIONAL_BUY_GAS that we use in front-running the target
    */
-  ADDITIONAL_BUY_GAS: 10,
+  ADDITIONAL_BUY_GAS: 1.500014292,
 
   //////////////// TRADE CONFIG /////////////////
 
