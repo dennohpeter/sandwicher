@@ -125,10 +125,14 @@ contract ContractTest is Test {
 
         // SELL TOKEN
 
+        address[] memory path2 = new address[](2);
+        path2[0] = address(toToken);
+        path2[1] = address(fromToken);
+
         sandWicher.sell(
             abi.encode(
                 router, // router
-                address(toToken), // token to sell
+                path2, // token to sell
                 0
             )
         );

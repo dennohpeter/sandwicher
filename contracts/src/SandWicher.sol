@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 
 interface IPancakeRouter02 {
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -17,7 +18,7 @@ interface IPancakeRouter02 {
     ) external;
 }
 
-contract SandWicher is Ownable, ReentrancyGuard {
+contract SandWicher is Ownable, ReentrancyGuard, Multicall {
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
 
     /**
@@ -55,20 +56,14 @@ contract SandWicher is Ownable, ReentrancyGuard {
         onlyOwner
         nonReentrant
     {
-        (address router, address fromToken, uint256 amountOutMin) = abi.decode(
-            _data,
-            (address, address, uint256)
-        );
+        (address router, address[] memory path, uint256 amountOutMin) = abi
+            .decode(_data, (address, address[], uint256));
 
-        uint256 amountIn = IERC20(fromToken).balanceOf(address(this));
+        uint256 amountIn = IERC20(path[0]).balanceOf(address(this));
 
         require(amountIn > 0, "!BAL");
 
-        _approve(IERC20(fromToken), router, amountIn);
-
-        address[] memory path = new address[](2);
-        path[0] = fromToken;
-        path[1] = WBNB;
+        _approve(IERC20(path[0]), router, amountIn);
 
         IPancakeRouter02(router)
             .swapExactTokensForTokensSupportingFeeOnTransferTokens(
