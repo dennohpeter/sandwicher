@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Multicall.sol";
 
 interface IPancakeRouter02 {
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -18,9 +17,7 @@ interface IPancakeRouter02 {
     ) external;
 }
 
-contract SandWicher is Ownable, ReentrancyGuard, Multicall {
-    address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-
+contract SandWicher is Ownable, ReentrancyGuard {
     /**
      * @dev Buys tokens
      */
@@ -73,6 +70,16 @@ contract SandWicher is Ownable, ReentrancyGuard, Multicall {
                 address(this),
                 block.timestamp
             );
+    }
+
+    function simulate(bytes calldata buy_data, bytes calldata sell_data)
+        external
+        payable
+        onlyOwner
+        nonReentrant
+    {
+        buy(buy_data);
+        sell(sell_data);
     }
 
     function _approve(

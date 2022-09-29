@@ -177,11 +177,7 @@ class Mempool {
             amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
 
             if (
-              profitInTargetFromToken.gt(0) &&
-              TOKENS_TO_MONITOR.some(
-                (token) =>
-                  token.toLowerCase() === targetFromToken.address.toLowerCase()
-              )
+              profitInTargetFromToken.gt(0)
               //  &&
               // (await this.isSafe({
               //   path,
@@ -189,6 +185,19 @@ class Mempool {
               //   amountIn,
               // }))
             ) {
+              if (
+                TOKENS_TO_MONITOR.some(
+                  (token) =>
+                    token.toLowerCase() ===
+                    targetFromToken.address.toLowerCase()
+                )
+              ) {
+                console.log(
+                  `${targetFromToken.address} is not in the list of tokens to monitor`
+                );
+                return;
+              }
+
               let amountOutMin = constants.Zero;
 
               // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
