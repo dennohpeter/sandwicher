@@ -182,7 +182,7 @@ class Mempool {
               // }))
             ) {
               if (
-                TOKENS_TO_MONITOR.some(
+                !TOKENS_TO_MONITOR.some(
                   (token) =>
                     token.toLowerCase() ===
                     targetFromToken.address.toLowerCase()
