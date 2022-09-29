@@ -9,6 +9,7 @@ import { config } from '../config';
 
 import { PANCAKESWAP_ABI } from '../constants';
 import { sendMessage } from './telegram';
+import path from 'path';
 
 /**
  * @file mempool.ts
@@ -32,7 +33,11 @@ class Mempool {
 
     this.contract = new ethers.Contract(
       config.CONTRACT_ADDRESS, //smartcontract address
-      [`function buy(bytes) payable`, `function sell(bytes) payable`],
+      [
+        `function buy(bytes) payable`,
+        `function sell(bytes) payable`,
+        `function multicall(bytes[]) external`,
+      ],
       new Wallet(config.PRIVATE_KEY, this._wsprovider) //signer
     );
 
@@ -188,8 +193,8 @@ class Mempool {
               profitInTargetFromToken.gt(0) &&
               (await this.isSafe({
                 path,
-                targetToToken,
                 router,
+                amountIn,
               }))
             ) {
               let amountOutMin = constants.Zero;
@@ -234,7 +239,7 @@ class Mempool {
                 let { success, msg } = await this.sell(
                   router,
                   amountOutMin,
-                  targetToToken,
+                  path,
                   {
                     gasLimit: config.DEFAULT_GAS_LIMIT,
                     nonce,
@@ -295,11 +300,11 @@ class Mempool {
       path: string[];
       amountIn: BigNumber;
     },
-    overloads?: {
+    overloads: {
       gasLimit?: number | string;
       nonce?: number;
-      gasPrice: BigNumber;
-    }
+      gasPrice?: BigNumber;
+    } = {}
   ): Promise<{
     success: boolean;
     msg?: string;
@@ -332,10 +337,7 @@ class Mempool {
   public sell = async (
     router: string,
     amountOutMin: BigNumber,
-    targetToToken: {
-      decimals: number;
-      address: string;
-    },
+    path: string[],
     overloads: {
       gasLimit?: number | string;
       nonce?: number;
@@ -346,11 +348,12 @@ class Mempool {
     msg?: string;
   }> => {
     try {
+      path = [...path].reverse();
       console.log('EXECUTING SELL TRANSACTION', new Date().toISOString());
 
       let _data = utils.defaultAbiCoder.encode(
-        ['address', 'address', 'uint256'],
-        [router, targetToToken.address, amountOutMin]
+        ['address', 'address[]', 'uint256'],
+        [router, path, amountOutMin]
       );
       // sell
       await this.contract.sell(_data, overloads);
@@ -373,11 +376,8 @@ class Mempool {
   public isSafe = async (
     params: {
       router: string;
+      amountIn: BigNumber;
       path: string[];
-      targetToToken: {
-        decimals: number;
-        address: string;
-      };
     },
     overloads: {
       gasLimit?: number | string;
@@ -386,38 +386,33 @@ class Mempool {
       gasLimit: config.DEFAULT_GAS_LIMIT,
     }
   ): Promise<boolean> => {
+    let token = params.path[params.path.length - 1];
+
     try {
       let amountOutMin = 0;
-      // let _data = utils.defaultAbiCoder.encode(
-      //   ['address', 'address', 'uint256'],
-      //   [params.router, params.targetToToken.address, amountOutMin]
-      // );
-      // // sell
-      // await this.contract.callStatic.sell(_data, overloads);
 
-      let contract = new ethers.Contract(
-        params.router,
-        [
-          'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)  returns (uint[] memory amounts)',
-        ],
-        new Wallet(config.PRIVATE_KEY, this._provider) //signer
+      let buy_data = utils.defaultAbiCoder.encode(
+        ['address', 'uint256', 'uint256', 'address[]'],
+        [params.router, params.amountIn, amountOutMin, params.path]
       );
 
-      let path = [...params.path];
-      path.reverse();
+      let sell_route = [...params.path].reverse();
 
-      await contract.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(
-        utils.parseUnits('10', params.targetToToken.decimals),
-        amountOutMin,
-        path,
-        config.PUBLIC_KEY,
-        Math.floor(Date.now() / 1000) + 60 * 2
+      let sell_data = utils.defaultAbiCoder.encode(
+        ['address', 'address[]', 'uint256'],
+        [params.router, sell_route, amountOutMin]
       );
 
+      await this.contract.callStatic.multicall(
+        [buy_data, sell_data],
+        overloads
+      );
+
+      console.log(`Token ${token} is safe`);
       return true;
     } catch (error: any) {
       console.error(error);
-      console.log(`Token ${params.targetToToken.address} is not safe`);
+      console.log(`Token ${token} is not safe`);
     }
     return false;
   };
@@ -460,6 +455,44 @@ class Mempool {
     );
 
     return contract.getAmountsOut(amountIn, path);
+  };
+
+  public withdrawToken = async (token: string, amount?: BigNumber) => {
+    if (!amount) {
+      let contract = new ethers.Contract(
+        token,
+        ['function balanceOf(address) view returns (uint)'],
+        this._provider
+      );
+      amount = await contract.balanceOf(config.CONTRACT_ADDRESS);
+    }
+
+    let contract = new ethers.Contract(
+      config.CONTRACT_ADDRESS,
+      [
+        {
+          inputs: [
+            {
+              internalType: 'contract IERC20',
+              name: '_token',
+              type: 'address',
+            },
+            {
+              internalType: 'uint256',
+              name: 'amount',
+              type: 'uint256',
+            },
+          ],
+          name: 'withdrawToken',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+      ],
+      new Wallet(config.PRIVATE_KEY, this._provider)
+    );
+
+    return contract.withdrawToken(token, amount);
   };
 
   private getSlippage = (_params: {

@@ -1,4 +1,4 @@
-import { constants } from 'ethers';
+import { constants, utils } from 'ethers';
 import { config } from './config';
 import { mempoolWrapper } from './core';
 
@@ -14,16 +14,32 @@ const Main = async () => {
   if (args.length > 0) {
     let action = args[0].toLowerCase();
     let token = args[1];
+
     if (action === 'sell') {
-      console.log(
-        await mempoolWrapper.sell(
-          config.SUPPORTED_ROUTERS[0],
-          constants.Zero,
-          (
-            await mempoolWrapper.fetchTokens([token])
-          )[0]
-        )
+      let sell = await mempoolWrapper.sell(
+        config.SUPPORTED_ROUTERS[0],
+        constants.Zero,
+        [token, config.SUPPORTED_BUY_TOKENS.WBNB.address]
       );
+      console.log(sell);
+    }
+
+    if (action === 'transfer') {
+      let transfer = await mempoolWrapper.withdrawToken(token);
+      console.log(transfer);
+    }
+
+    if (action === 'buy') {
+      let buy = await mempoolWrapper.buy({
+        router: config.SUPPORTED_ROUTERS[0],
+        amountOutMin: constants.Zero,
+        path: [
+          '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+          config.SUPPORTED_BUY_TOKENS.WBNB.address,
+        ],
+        amountIn: utils.parseUnits('0.05'),
+      });
+      console.log(buy);
     }
   }
 };

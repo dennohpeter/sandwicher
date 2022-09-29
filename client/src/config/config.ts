@@ -27,7 +27,7 @@ export const config = {
    * @description Contract address
    * @type {string}
    */
-  CONTRACT_ADDRESS: '0x5c76FD3779678A88d780Cf02261a3eFCa7E9A8e7',
+  CONTRACT_ADDRESS: '0x9ef8892f72a2b7a4b249be90ddaeeb60734cba43',
 
   PUBLIC_KEY: process.env.PUBLIC_KEY!,
 
