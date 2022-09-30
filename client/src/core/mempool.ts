@@ -208,6 +208,13 @@ class Mempool {
               targetMethodName,
             });
 
+          if (targetSlippage < 0.001) {
+            console.log(
+              `Skipping: Target slippage ${targetSlippage} is < 0.1%`
+            );
+            return;
+          }
+
           let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
           let newExecutionPrice = utils.parseUnits(
