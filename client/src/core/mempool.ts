@@ -301,7 +301,7 @@ class Mempool {
             if (success) {
               nonce += 1;
               // broadcast sell tx
-              await sleep(1000);
+              await sleep(500);
               let sell_route = [...path].reverse();
               let { success, msg } = await this.sell(
                 router,
