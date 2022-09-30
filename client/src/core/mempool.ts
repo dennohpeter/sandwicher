@@ -233,7 +233,10 @@ class Mempool {
             .mul(10_000 - parseInt((targetSlippage * 10_000).toFixed(0)))
             .div(10_000);
 
-          let amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
+          let amountIn = utils.parseUnits(
+            config.BNB_BUY_AMOUNT.toString(),
+            targetFromToken.decimals
+          );
 
           if (
             profitInTargetFromToken.gt(0)
