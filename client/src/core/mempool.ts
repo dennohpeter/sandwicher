@@ -249,7 +249,8 @@ class Mempool {
               )} ${targetFromToken.symbol} to ${utils.formatUnits(
                 buyAttackAmount,
                 targetFromToken.decimals
-              )} ${targetFromToken.symbol}`
+              )} ${targetFromToken.symbol},
+              Tx: ${targetHash}`
             );
 
             amountIn = buyAttackAmount;
@@ -282,88 +283,98 @@ class Mempool {
               config.PUBLIC_KEY
             );
 
-            this._broadcastedTx = true;
-            // broadcast buy tx
-            let { success, msg } = await this.buy(
-              {
-                router,
-                amountIn,
-                amountOutMin,
-                path,
-              },
-              {
-                gasPrice: targetGasPriceInWei.add(
-                  utils.parseUnits(config.ADDITIONAL_BUY_GAS.toString(), 'gwei')
-                ),
-                gasLimit: config.DEFAULT_GAS_LIMIT,
-                nonce,
-              }
-            );
-
-            console.log({ success, msg: msg || `Buy tx sent` });
-            if (success) {
-              nonce += 1;
-              // broadcast sell tx
-              await sleep(200);
-              let sell_route = [...path].reverse();
-              let { success, msg } = await this.sell(
-                router,
-                amountOutMin,
-                sell_route,
+            if (!this._broadcastedTx) {
+              this._broadcastedTx = true;
+              // broadcast buy tx
+              let { success, msg } = await this.buy(
                 {
+                  router,
+                  amountIn,
+                  amountOutMin,
+                  path,
+                },
+                {
+                  gasPrice: targetGasPriceInWei.add(
+                    utils.parseUnits(
+                      config.ADDITIONAL_BUY_GAS.toString(),
+                      'gwei'
+                    )
+                  ),
                   gasLimit: config.DEFAULT_GAS_LIMIT,
                   nonce,
                 }
               );
 
-              console.log({ success, msg: msg || `Sell tx sent` });
+              console.log({ success, msg: msg || `Buy tx sent` });
+              if (success) {
+                nonce += 1;
+                // broadcast sell tx
+                await sleep(200);
+                let sell_route = [...path].reverse();
+                let { success, msg } = await this.sell(
+                  router,
+                  amountOutMin,
+                  sell_route,
+                  {
+                    gasLimit: config.DEFAULT_GAS_LIMIT,
+                    nonce,
+                  }
+                );
+
+                console.log({ success, msg: msg || `Sell tx sent` });
+                await sleep(9000);
+                this._broadcastedTx = false;
+              }
+            } else {
+              console.info(`Skipping: Tx ${targetHash} already broadcasted`);
             }
-            // this._broadcastedTx = false;
+
+            let targetGasFeeInBNB = utils.formatEther(
+              targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
+            );
+
+            console.log({
+              router,
+              targetHash,
+              targetFrom,
+              targetAmount: parseFloat(
+                utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
+              ),
+              path,
+              targetFromToken,
+              targetToToken,
+              targetMethodName,
+              targetGasLimit: targetGasLimit.toNumber(),
+              targetGasPriceInGwei: `${parseFloat(
+                utils.formatUnits(targetGasPriceInWei || constants.Zero, 'gwei')
+              ).toString()} gwei`,
+              targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
+              targetAmountOutMin: targetAmountOutMin.toString(),
+              executionPrice: executionPrice.toString(),
+              newExecutionPrice: newExecutionPrice.toString(),
+              profitInTargetFromToken: utils.formatUnits(
+                profitInTargetFromToken,
+                targetFromToken.decimals
+              ),
+              profitInTargetToToken: utils.formatUnits(
+                profitInTargetToToken,
+                targetToToken.decimals
+              ),
+
+              targetSlippage,
+              amountIn: utils.formatUnits(amountIn, targetFromToken.decimals),
+              amountIn2: utils.formatUnits(
+                buyAttackAmount,
+                targetFromToken.decimals
+              ),
+              timestamp: new Date(targetTimestamp || 0 * 1000).toISOString(),
+            });
           }
-          let targetGasFeeInBNB = utils.formatEther(
-            targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
-          );
-
-          console.log({
-            router,
-            targetHash,
-            targetFrom,
-            targetAmount: parseFloat(
-              utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-            ),
-            path,
-            targetFromToken,
-            targetToToken,
-            targetMethodName,
-            targetGasLimit: targetGasLimit.toNumber(),
-            targetGasPriceInGwei: `${parseFloat(
-              utils.formatUnits(targetGasPriceInWei || constants.Zero, 'gwei')
-            ).toString()} gwei`,
-            targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
-            targetAmountOutMin: targetAmountOutMin.toString(),
-            executionPrice: executionPrice.toString(),
-            newExecutionPrice: newExecutionPrice.toString(),
-            profitInTargetFromToken: utils.formatUnits(
-              profitInTargetFromToken,
-              targetFromToken.decimals
-            ),
-            profitInTargetToToken: utils.formatUnits(
-              profitInTargetToToken,
-              targetToToken.decimals
-            ),
-
-            targetSlippage,
-            amountIn: utils.formatUnits(amountIn, targetFromToken.decimals),
-            amountIn2: utils.formatUnits(
-              buyAttackAmount,
-              targetFromToken.decimals
-            ),
-            timestamp: new Date(targetTimestamp || 0 * 1000).toISOString(),
-          });
         }
       } catch (error) {
         console.error(error);
-        // this._broadcastedTx = false;
+        let msg = this.decodeError(error);
+        this._broadcastedTx = false;
       }
     }
   };
@@ -398,10 +409,8 @@ class Mempool {
         success: true,
       };
     } catch (error: any) {
-      console.error(error);
-      let msg =
-        JSON.parse(JSON.parse(JSON.stringify(error))?.error?.error?.response)
-          ?.error?.message || error;
+      let msg = this.decodeError(error);
+
       return {
         success: false,
         msg,
@@ -437,9 +446,7 @@ class Mempool {
       };
     } catch (error: any) {
       console.error(error);
-      let msg =
-        JSON.parse(JSON.parse(JSON.stringify(error))?.error?.error?.response)
-          ?.error?.message || error;
+      let msg = this.decodeError(error);
       return {
         success: false,
         msg,
@@ -651,6 +658,25 @@ class Mempool {
     return {
       slippage,
     };
+  };
+
+  private decodeError = (error: any) => {
+    let msg = '';
+    try {
+      error = JSON.parse(JSON.stringify(error));
+      console.log({ error });
+
+      msg =
+        JSON.parse(error)?.error?.error?.response?.error?.message ||
+        error?.response ||
+        error?.reason ||
+        error?.message ||
+        error;
+    } catch (_error: any) {
+      msg = error;
+    }
+
+    return msg;
   };
 }
 
