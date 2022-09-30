@@ -291,7 +291,11 @@ class Mempool {
             if (!this._broadcastedTx) {
               this._broadcastedTx = true;
               // broadcast buy tx
-              let { success, msg: buyErrorMsg } = await this.buy(
+              let {
+                success,
+                msg: buyErrorMsg,
+                hash: buyHash,
+              } = await this.buy(
                 {
                   router,
                   amountIn,
@@ -316,15 +320,14 @@ class Mempool {
                 // broadcast sell tx
                 await sleep(200);
                 let sell_route = [...path].reverse();
-                let { success, msg: sellErrorMsg } = await this.sell(
-                  router,
-                  amountOutMin,
-                  sell_route,
-                  {
-                    gasLimit: config.DEFAULT_GAS_LIMIT,
-                    nonce,
-                  }
-                );
+                let {
+                  success,
+                  msg: sellErrorMsg,
+                  hash: sellHash,
+                } = await this.sell(router, amountOutMin, sell_route, {
+                  gasLimit: config.DEFAULT_GAS_LIMIT,
+                  nonce,
+                });
 
                 console.log({ success, msg: sellErrorMsg || `Sell tx sent` });
 
@@ -382,28 +385,38 @@ class Mempool {
 
                 let msg = `**NEW TRADE NOTIFICATION**\n---`;
 
-                msg += `\n---`;
                 msg += `\nToken Name: ${targetToToken.name}`;
                 msg += `\nToken Symbol: ${targetToToken.symbol}`;
-                msg += `\n**Router:** ${router}`;
+                msg += `\n**Router:** ${router.toUpperCase()}`;
                 msg += `\n---`;
 
-                msg += `\n**TARGET Trade**\n---`;
+                msg += `\n**TARGET TRADE**\n---`;
                 msg += `\nFrom: ${targetFrom.toUpperCase()}`;
                 msg += `\nTarget Hash: [${targetHash.toUpperCase()}](${
                   config.EXPLORER_URL
                 }$/tx/${targetHash})`;
                 msg += `\nTarget Path: ${targetFromToken.symbol} -> ${targetToToken.symbol}`;
-                msg += `\nTarget Method: ${targetMethodName}`;
-                msg += `\nTarget AmountIn: ${parseFloat(
-                  utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-                ).toString()} ${targetFromToken.symbol}`;
-                msg += `\nTarget AmountOutMin: ${parseFloat(
-                  utils.formatUnits(targetAmountOutMin, targetToToken.decimals)
-                ).toString()} ${targetToToken.symbol}`;
-                msg += `\nTarget Slippage: ${(targetSlippage * 100).toFixed(
+                msg += `\nTarget Method: \`${targetMethodName}\``;
+                msg += `\nTarget AmountIn: \`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(
+                      targetAmountInWei,
+                      targetFromToken.decimals
+                    )
+                  ).toFixed(6)
+                )} ${targetFromToken.symbol}\``;
+                msg += `\nTarget AmountOutMin: \`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(
+                      targetAmountOutMin,
+                      targetToToken.decimals
+                    )
+                  ).toFixed(6)
+                )} ${targetToToken.symbol}\``;
+                msg += `\n---`;
+                msg += `\nTarget Slippage: \`${(targetSlippage * 100).toFixed(
                   4
-                )}%`;
+                )}%\``;
                 msg += `\nTarget Gas Limit: ${targetGasLimit.toNumber()}`;
                 msg += `\nTarget Gas Price: ${parseFloat(
                   utils.formatUnits(
@@ -415,16 +428,20 @@ class Mempool {
 
                 msg += `\n---`;
 
-                msg += `Our Trade\n---`;
-                msg += `\nOur Path: ${targetFromToken.symbol} -> ${targetToToken.symbol}`;
-                msg += `\nOur AmountIn: ${parseFloat(
-                  utils.formatUnits(amountIn, targetFromToken.decimals)
-                ).toString()} ${targetFromToken.symbol}`;
-                msg += `\nOur AmountOutMin: ${parseFloat(
-                  utils.formatUnits(amountOutMin, targetToToken.decimals)
-                ).toString()} ${targetToToken.symbol}`;
-                msg += `\nOur Gas Limit: ${config.DEFAULT_GAS_LIMIT}`;
-                msg += `\nOur Gas Price: ${parseFloat(
+                msg += `\n**Our Trade**\n---`;
+                msg += `\nPath: \`${targetFromToken.symbol} -> ${targetToToken.symbol}\``;
+                msg += `\nAmountIn: \`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(amountIn, targetFromToken.decimals)
+                  ).toFixed(6)
+                )} ${targetFromToken.symbol}\``;
+                msg += `\nAmountOutMin: \`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(amountOutMin, targetToToken.decimals)
+                  ).toFixed(6)
+                )} ${targetToToken.symbol}\``;
+                msg += `\nGas Limit: \`${config.DEFAULT_GAS_LIMIT}\``;
+                msg += `\nGas Price: \`${parseFloat(
                   utils.formatUnits(
                     targetGasPriceInWei.add(
                       utils.parseUnits(
@@ -434,23 +451,32 @@ class Mempool {
                     ),
                     'gwei'
                   )
-                ).toString()} gwei`;
-
+                ).toString()} Gwei\``;
                 msg += `\n---`;
 
-                msg += `\nExecution Price: ${executionPrice.toString()}`;
+                msg += `\nExecution Price: \`${utils.formatUnits(
+                  executionPrice,
+                  targetToToken.decimals
+                )} ${targetToToken.symbol}\``;
+
                 msg += `\n\\~ Profit in ${
                   targetFromToken.symbol
-                }: ${utils.formatUnits(
-                  profitInTargetFromToken,
-                  targetFromToken.decimals
-                )}`;
-                msg += `\n\\~ Profit in ${
-                  targetToToken.symbol
-                }: ${utils.formatUnits(
-                  profitInTargetToToken,
-                  targetToToken.decimals
-                )}`;
+                }:\`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(
+                      profitInTargetFromToken,
+                      targetFromToken.decimals
+                    )
+                  ).toFixed(6)
+                )}\``;
+                msg += `\n\\~ Profit in ${targetToToken.symbol}: \`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(
+                      profitInTargetToToken,
+                      targetToToken.decimals
+                    )
+                  ).toFixed(6)
+                )}\``;
 
                 msg += `\n---`;
 
@@ -458,14 +484,25 @@ class Mempool {
                   utils.formatUnits(buyAttackAmount, targetFromToken.decimals)
                 ).toString()} ${targetFromToken.symbol}`;
 
-                msg += `\nBuy Tx Status: ${
+                msg += `\nBuy Status: ${
                   buyErrorMsg?.replaceAll('(', '\\(').replaceAll(')', '\\)') ||
-                  'Success'
+                  '✔️'
                 }`;
-                msg += `\nSell Tx Status: ${
+                msg += buyHash
+                  ? `\nBuy Hash: ${`[${buyHash.toUpperCase()}](${
+                      config.EXPLORER_URL
+                    }$tx/${buyHash})`}`
+                  : '';
+
+                msg += `\nSell Status: ${
                   sellErrorMsg?.replaceAll('(', '\\(').replaceAll(')', '\\)') ||
-                  'Success'
+                  '✔️'
                 }`;
+                msg += sellHash
+                  ? `\nSell Hash: ${`[${sellHash.toUpperCase()}](${
+                      config.EXPLORER_URL
+                    }$tx/${sellHash})`}`
+                  : '';
 
                 msg += `\n---`;
 
@@ -503,6 +540,7 @@ class Mempool {
     } = {}
   ): Promise<{
     success: boolean;
+    hash?: string;
     msg?: string;
   }> => {
     try {
@@ -513,10 +551,11 @@ class Mempool {
         ['address', 'uint256', 'uint256', 'address[]'],
         [data.router, data.amountIn, data.amountOutMin, data.path]
       );
-      await this.contract.buy(_data, overloads);
+      let { hash } = await this.contract.buy(_data, overloads);
 
       return {
         success: true,
+        hash,
       };
     } catch (error: any) {
       let msg = this.decodeError(error);
@@ -540,6 +579,7 @@ class Mempool {
   ): Promise<{
     success: boolean;
     msg?: string;
+    hash?: string;
   }> => {
     try {
       console.log('EXECUTING SELL TRANSACTION', new Date().toISOString());
@@ -549,10 +589,11 @@ class Mempool {
         [router, path, amountOutMin]
       );
       // sell
-      await this.contract.sell(_data, overloads);
+      let { hash } = await this.contract.sell(_data, overloads);
 
       return {
         success: true,
+        hash,
       };
     } catch (error: any) {
       console.error(error);
