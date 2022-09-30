@@ -17,6 +17,7 @@ import {
 import { config } from '../config';
 
 import { PANCAKESWAP_ABI, TOKENS_TO_MONITOR } from '../constants';
+import { sleep } from '../helpers';
 
 /**
  * @file mempool.ts
@@ -210,7 +211,9 @@ class Mempool {
 
           if (targetSlippage < 0.001) {
             console.log(
-              `Skipping: Target slippage ${targetSlippage} is < 0.1%`
+              `Skipping: ${targetHash} Target slippage ${targetSlippage.toFixed(
+                4
+              )} is < 0.1%`
             );
             return;
           }
@@ -262,7 +265,7 @@ class Mempool {
               !this.tokensToMonitor.has(targetToToken.address.toLowerCase())
             ) {
               console.log(
-                `${targetToToken.address} is not in the list of tokens to monitor`
+                `Skipping: ${targetToToken.address} is not in the list of tokens to monitor`
               );
               return;
             }
@@ -298,6 +301,7 @@ class Mempool {
             if (success) {
               nonce += 1;
               // broadcast sell tx
+              await sleep(1000);
               let sell_route = [...path].reverse();
               let { success, msg } = await this.sell(
                 router,
