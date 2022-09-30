@@ -249,8 +249,7 @@ class Mempool {
               )} ${targetFromToken.symbol} to ${utils.formatUnits(
                 buyAttackAmount,
                 targetFromToken.decimals
-              )} ${targetFromToken.symbol},
-              Tx: ${targetHash}`
+              )} ${targetFromToken.symbol},\nTx: ${targetHash}`
             );
 
             amountIn = buyAttackAmount;
@@ -309,7 +308,7 @@ class Mempool {
                       'gwei'
                     )
                   ),
-                  gasLimit: config.DEFAULT_GAS_LIMIT,
+                  // gasLimit: config.DEFAULT_GAS_LIMIT,
                   nonce,
                 }
               );
