@@ -11,6 +11,12 @@ export const config = {
    * @description PRIVATE_KEY is the private key of the account that will be used to sign transactions
    */
   PRIVATE_KEY: process.env.PRIVATE_KEY!,
+
+  /**
+   * @description PUBLIC_KEY is the public key of the account that will be used to sign transactions
+   */
+  PUBLIC_KEY: process.env.PUBLIC_KEY!,
+
   /**
    * @description JSON RPC endpoint
    * @type {string}
@@ -29,14 +35,6 @@ export const config = {
    */
   CONTRACT_ADDRESS: '0xfE27fE46F0d96E94eC89b64a00f8BAd0A7F4256D',
 
-  PUBLIC_KEY: process.env.PUBLIC_KEY!,
-
-  /**
-   * @description List of supported routers on BSC
-   * @type {string[]}
-   */
-  SUPPORTED_ROUTERS: ['0x10ED43C718714eb63d5aA57B78B54704E256024E'],
-
   /**
    * STABLE TOKENS addresses e.g BUSD, USDT, USDC, etc
    */
@@ -47,30 +45,17 @@ export const config = {
    */
   EXPLORER_URL: 'https://bscscan.com',
 
-  ///////////////////WHITELISTED_USERS OF THE BOT //////////
-  WHITELISTED_USERS: ['1610178949'],
-
-  ////////////////////////BOT TOKEN////////////////////////
+  /**
+   * @description Telegram Bot Token
+   */
 
   BOT_TOKEN: process.env.BOT_TOKEN!,
 
-  ////////////// PRICE IMPACT CONFIGs ////////////
   /**
-   * @description MIN_BNB_AMOUNT is the min amount of BNB that can be swapped
-   *
+   * @description Telegram Chat IDs for users to receive notifications
+   * @type {string[]}
    */
-  MIN_BNB_AMOUNT: 10,
-
-  ////////////////// SLIPPAGE CONFIGS ////////////////
-  /***
-   * @description MINIMUM_SLIPPAGE_AMOUNT is the min slippage amount to consider before execution.
-   */
-  MINIMUM_SLIPPAGE_AMOUNT: 5,
-
-  /**
-   * @description MIN_USD_AMOUNT is the min amount of USDT that will trigger price impact check/
-   */
-  MIN_USD_AMOUNT: 100,
+  WHITELISTED_USERS: ['1610178949'],
 
   ////////////// FALLBACK VALUES /////////////////
 
@@ -78,8 +63,6 @@ export const config = {
    * @description DEFAULT_GAS_LIMIT that we use in transactions
    */
   DEFAULT_GAS_LIMIT: 400_000,
-
-  DEFAULT_GAS_PRICE: 10,
 
   /**
    * @description ADDITIONAL_BUY_GAS that we use in front-running the target
@@ -105,4 +88,11 @@ export const config = {
    * @default 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
    */
   WBNB_ADDRESS: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+
+  /**
+   * @description PancakeSwap Router address
+   * @type {string}
+   * @default 0x10ED43C718714eb63d5aA57B78B54704E256024E
+   */
+  PANCAKE_ROUTER_ADDRESS: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
 };

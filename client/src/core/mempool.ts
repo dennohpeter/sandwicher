@@ -52,6 +52,8 @@ class Mempool {
     }
   >;
 
+  private supportedRouters: Map<string, string>;
+
   constructor() {
     // initialize some variables i.e provider, signers, interface
     this._wsprovider = new providers.WebSocketProvider(config.WSS_URL);
@@ -69,6 +71,7 @@ class Mempool {
     this.supported_buy_methods = new Map();
     this.supported_buy_tokens = new Map();
     this.tokensToMonitor = new Map();
+    this.supportedRouters = new Map();
   }
 
   /**
@@ -126,6 +129,12 @@ class Mempool {
     (await this.fetchTokenData(TOKENS_TO_MONITOR)).forEach((token) => {
       this.tokensToMonitor.set(token.address.toLowerCase(), token);
     });
+
+    // setup supported routers
+    this.supportedRouters.set(
+      '0x10ED43C718714eb63d5aA57B78B54704E256024E'.toLowerCase(),
+      '0x10ED43C718714eb63d5aA57B78B54704E256024E'
+    );
   };
 
   /**
@@ -145,12 +154,7 @@ class Mempool {
       timestamp: targetTimestamp,
     } = receipt;
 
-    if (
-      router &&
-      config.SUPPORTED_ROUTERS.some(
-        (router) => router.toLowerCase() === receipt?.to?.toLowerCase()
-      )
-    ) {
+    if (router && this.supportedRouters.has(router?.toLowerCase() || '')) {
       try {
         // decode tx data
         const tx = this._pancakeSwap.parseTransaction({
@@ -174,19 +178,22 @@ class Mempool {
             path[path.length - 1],
           ]);
 
-          // Check if tx value  is > clients threshold
-          // if (
-          //   this.isStableToken(targetFromToken.address)
-          //     ? targetAmountInWei.gt(
-          //         utils.parseUnits(
-          //           config.MIN_USD_AMOUNT.toString(),
-          //           targetFromToken.decimals
-          //         )
-          //       )
-          //     : targetAmountInWei.gt(
-          //         utils.parseUnits(config.MIN_BNB_AMOUNT.toString())
-          //       )
-          // ) {
+          // Check if target amountIn value  is > clients amountIn
+          if (
+            targetAmountInWei.lt(
+              utils.parseUnits(config.BNB_BUY_AMOUNT.toString())
+            )
+          ) {
+            console.log(
+              `Target Amount In: ${utils.formatUnits(
+                targetAmountInWei,
+                targetFromToken.decimals
+              )} ${targetFromToken.symbol} is < Our BNB Buy Amount: ${
+                config.BNB_BUY_AMOUNT
+              } ${targetFromToken.symbol} `
+            );
+            return;
+          }
           // get execution price from sdk
           let amounts = await this.getAmountsOut(
             router,
@@ -201,13 +208,11 @@ class Mempool {
            * zone to execute buy and calculate estimations of gases
            */
 
-          let { slippage: targetSlippage, amountIn: targetAmountIn } =
-            this.getSlippage({
-              targetFromToken,
-              executionPrice,
-              targetAmountOutMin,
-              targetMethodName,
-            });
+          let { slippage: targetSlippage } = this.getSlippage({
+            executionPrice,
+            targetAmountOutMin,
+            targetMethodName,
+          });
 
           if (targetSlippage < 0.001) {
             console.log(
@@ -228,8 +233,7 @@ class Mempool {
             .mul(parseInt((targetSlippage * 10_000).toFixed(0)))
             .div(10_000);
 
-          // let buyAttackAmount = targetAmountInWei.mul(100 - targetSlippage);
-          let amountIn2 = targetAmountInWei
+          let buyAttackAmount = targetAmountInWei
             .mul(10_000 - parseInt((targetSlippage * 10_000).toFixed(0)))
             .div(10_000);
 
@@ -237,6 +241,20 @@ class Mempool {
             config.BNB_BUY_AMOUNT.toString(),
             targetFromToken.decimals
           );
+
+          if (buyAttackAmount.lt(amountIn)) {
+            console.info(
+              `Updating our amount In from ${utils.formatUnits(
+                amountIn,
+                targetFromToken.decimals
+              )} ${targetFromToken.symbol} to ${utils.formatUnits(
+                buyAttackAmount,
+                targetFromToken.decimals
+              )} ${targetFromToken.symbol}`
+            );
+
+            amountIn = buyAttackAmount;
+          }
 
           if (
             profitInTargetFromToken.gt(0)
@@ -604,26 +622,15 @@ class Mempool {
   };
 
   private getSlippage = (_params: {
-    targetFromToken: {
-      decimals: number;
-      address: string;
-    };
     targetMethodName: string;
     executionPrice: any;
     targetAmountOutMin: any;
   }): {
     slippage: number;
-    amountIn: BigNumber;
   } => {
     let slippage: any = 0; // target is not willing to lose any amountOut tokens
-    let amountIn = constants.Zero;
 
-    let {
-      targetFromToken,
-      targetMethodName,
-      executionPrice,
-      targetAmountOutMin,
-    } = _params;
+    let { targetMethodName, executionPrice, targetAmountOutMin } = _params;
 
     if (targetMethodName.startsWith('swapExactETHFor')) {
       slippage = (executionPrice - targetAmountOutMin) / executionPrice;
@@ -632,14 +639,6 @@ class Mempool {
         'swapExactTokensForTokensSupportingFeeOnTransferTokens'
       )
     ) {
-      amountIn = utils.parseUnits(
-        (this.isStableToken(targetFromToken.address)
-          ? config.USD_BUY_AMOUNT
-          : config.BNB_BUY_AMOUNT
-        ).toString(),
-        targetFromToken.decimals
-      );
-
       slippage = targetAmountOutMin / executionPrice;
     }
     // TODO: add support for swapETHForExactTokens
@@ -649,7 +648,6 @@ class Mempool {
 
     return {
       slippage,
-      amountIn,
     };
   };
 }

@@ -16,7 +16,7 @@ const Main = async () => {
 
     if (action === 'sell') {
       let sell = await mempoolWrapper.sell(
-        config.SUPPORTED_ROUTERS[0],
+        config.PANCAKE_ROUTER_ADDRESS,
         constants.Zero,
         [token, config.WBNB_ADDRESS]
       );
@@ -30,7 +30,7 @@ const Main = async () => {
 
     if (action === 'buy') {
       let buy = await mempoolWrapper.buy({
-        router: config.SUPPORTED_ROUTERS[0],
+        router: config.PANCAKE_ROUTER_ADDRESS,
         amountOutMin: constants.Zero,
         path: [
           '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
