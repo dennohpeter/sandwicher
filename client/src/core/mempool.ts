@@ -215,6 +215,7 @@ class Mempool {
           });
 
           if (targetSlippage < 0.001) {
+            //~ 0.1%
             console.log(
               `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
                 4
@@ -226,16 +227,14 @@ class Mempool {
           let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
           let newExecutionPrice = executionPrice
-            .mul(parseInt((targetSlippage * 10_000).toFixed(0)) + 10_000)
+            .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
             .div(10_000);
 
           let profitInTargetFromToken = targetAmountInWei
-            .mul(parseInt((targetSlippage * 10_000).toFixed(0)))
+            .mul((targetSlippage * 10_000).toFixed(0))
             .div(10_000);
 
-          let buyAttackAmount = targetAmountInWei
-            .mul(10_000 - parseInt((targetSlippage * 10_000).toFixed(0)))
-            .div(10_000);
+          let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
 
           let amountIn = utils.parseUnits(
             config.BNB_BUY_AMOUNT.toString(),
