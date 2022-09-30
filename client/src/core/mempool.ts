@@ -220,34 +220,18 @@ class Mempool {
 
           let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
-          let newExecutionPrice = utils.parseUnits(
-            (
-              parseFloat(
-                utils.formatUnits(executionPrice, targetToToken.decimals)
-              ) * parseFloat((targetSlippage + 1).toFixed(4))
-            ).toFixed(6),
-            targetToToken.decimals
-          );
+          let newExecutionPrice = executionPrice
+            .mul(parseInt((targetSlippage * 10_000).toFixed(0)) + 10_000)
+            .div(10_000);
 
-          let profitInTargetFromToken = utils.parseUnits(
-            (
-              parseFloat(
-                utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-              ) * targetSlippage
-            ).toFixed(6),
-            targetFromToken.decimals
-          );
+          let profitInTargetFromToken = targetAmountInWei
+            .mul(parseInt((targetSlippage * 10_000).toFixed(0)))
+            .div(10_000);
 
           // let buyAttackAmount = targetAmountInWei.mul(100 - targetSlippage);
-          let amountIn2 = utils.parseUnits(
-            (
-              parseFloat(
-                utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-              ) *
-              (1 - targetSlippage)
-            ).toFixed(6),
-            targetFromToken.decimals
-          );
+          let amountIn2 = targetAmountInWei
+            .mul(10_000 - parseInt((targetSlippage * 10_000).toFixed(0)))
+            .div(10_000);
 
           let amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
 
