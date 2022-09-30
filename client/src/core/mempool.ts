@@ -484,7 +484,7 @@ class Mempool {
 
                 msg += `\n---`;
 
-                msg += `\nEst\\. Buy Attack Amount: ${parseFloat(
+                msg += `\nEst. Buy Attack Amount: ${parseFloat(
                   utils.formatUnits(buyAttackAmount, targetFromToken.decimals)
                 ).toString()} ${targetFromToken.symbol}`;
 
