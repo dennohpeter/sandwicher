@@ -668,6 +668,7 @@ class Mempool {
       console.log({ error });
 
       msg =
+        error?.error?.reason ||
         error?.reason ||
         JSON.parse(error)?.error?.error?.response?.error?.message ||
         error?.response ||
