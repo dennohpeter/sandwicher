@@ -275,13 +275,15 @@ class Mempool {
               return;
             }
 
-            let [_, amountOutMin] = await this.getAmountsOut(
-              router,
-              path,
-              amountIn
-            );
+            // let [_, amountOutMin] = await this.getAmountsOut(
+            //   router,
+            //   path,
+            //   amountIn
+            // );
 
-            amountOutMin = amountOutMin.mul(997).div(1000);
+            // amountOutMin.mul(997).div(1000);
+
+            let amountOutMin = constants.Zero;
 
             // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
             targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
