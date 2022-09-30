@@ -372,8 +372,8 @@ class Mempool {
           }
         }
       } catch (error) {
-        console.error(error);
         let msg = this.decodeError(error);
+        console.error({ msg });
         await sleep(6000);
         this._broadcastedTx = false;
       }
@@ -668,9 +668,9 @@ class Mempool {
       console.log({ error });
 
       msg =
+        error?.reason ||
         JSON.parse(error)?.error?.error?.response?.error?.message ||
         error?.response ||
-        error?.reason ||
         error?.message ||
         error;
     } catch (_error: any) {
