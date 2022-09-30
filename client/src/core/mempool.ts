@@ -18,6 +18,7 @@ import { config } from '../config';
 
 import { PANCAKESWAP_ABI, TOKENS_TO_MONITOR } from '../constants';
 import { sleep } from '../helpers';
+import { sendMessage } from './telegram';
 
 /**
  * @file mempool.ts
@@ -290,7 +291,7 @@ class Mempool {
             if (!this._broadcastedTx) {
               this._broadcastedTx = true;
               // broadcast buy tx
-              let { success, msg } = await this.buy(
+              let { success, msg: buyErrorMsg } = await this.buy(
                 {
                   router,
                   amountIn,
@@ -309,13 +310,13 @@ class Mempool {
                 }
               );
 
-              console.log({ success, msg: msg || `Buy tx sent` });
+              console.log({ success, msg: buyErrorMsg || `Buy tx sent` });
               if (success) {
                 nonce += 1;
                 // broadcast sell tx
                 await sleep(200);
                 let sell_route = [...path].reverse();
-                let { success, msg } = await this.sell(
+                let { success, msg: sellErrorMsg } = await this.sell(
                   router,
                   amountOutMin,
                   sell_route,
@@ -325,7 +326,7 @@ class Mempool {
                   }
                 );
 
-                console.log({ success, msg: msg || `Sell tx sent` });
+                console.log({ success, msg: sellErrorMsg || `Sell tx sent` });
 
                 let targetGasFeeInBNB = utils.formatEther(
                   targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
@@ -378,6 +379,97 @@ class Mempool {
                     targetTimestamp || 0 * 1000
                   ).toISOString(),
                 });
+
+                let msg = `**NEW TRADE NOTIFICATION**\n---`;
+
+                msg += `\n---`;
+                msg += `\nToken Name: ${targetToToken.name}`;
+                msg += `\nToken Symbol: ${targetToToken.symbol}`;
+                msg += `\n**Router:** ${router}`;
+                msg += `\n---`;
+
+                msg += `\n**TARGET Trade**\n---`;
+                msg += `\nFrom: ${targetFrom.toUpperCase()}`;
+                msg += `\nTarget Hash: [${targetHash.toUpperCase()}](${
+                  config.EXPLORER_URL
+                }$/tx/${targetHash})`;
+                msg += `\nTarget Path: ${targetFromToken.symbol} -> ${targetToToken.symbol}`;
+                msg += `\nTarget Method: ${targetMethodName}`;
+                msg += `\nTarget AmountIn: ${parseFloat(
+                  utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
+                ).toString()} ${targetFromToken.symbol}`;
+                msg += `\nTarget AmountOutMin: ${parseFloat(
+                  utils.formatUnits(targetAmountOutMin, targetToToken.decimals)
+                ).toString()} ${targetToToken.symbol}`;
+                msg += `\nTarget Slippage: ${(targetSlippage * 100).toFixed(
+                  4
+                )}%`;
+                msg += `\nTarget Gas Limit: ${targetGasLimit.toNumber()}`;
+                msg += `\nTarget Gas Price: ${parseFloat(
+                  utils.formatUnits(
+                    targetGasPriceInWei || constants.Zero,
+                    'gwei'
+                  )
+                ).toString()} gwei`;
+                msg += `\nTarget Gas Fee: ${parseFloat(targetGasFeeInBNB)} BNB`;
+
+                msg += `\n---`;
+
+                msg += `Our Trade\n---`;
+                msg += `\nOur Path: ${targetFromToken.symbol} -> ${targetToToken.symbol}`;
+                msg += `\nOur AmountIn: ${parseFloat(
+                  utils.formatUnits(amountIn, targetFromToken.decimals)
+                ).toString()} ${targetFromToken.symbol}`;
+                msg += `\nOur AmountOutMin: ${parseFloat(
+                  utils.formatUnits(amountOutMin, targetToToken.decimals)
+                ).toString()} ${targetToToken.symbol}`;
+                msg += `\nOur Gas Limit: ${config.DEFAULT_GAS_LIMIT}`;
+                msg += `\nOur Gas Price: ${parseFloat(
+                  utils.formatUnits(
+                    targetGasPriceInWei.add(
+                      utils.parseUnits(
+                        config.ADDITIONAL_BUY_GAS.toString(),
+                        'gwei'
+                      )
+                    ),
+                    'gwei'
+                  )
+                ).toString()} gwei`;
+
+                msg += `\n---`;
+
+                msg += `\nExecution Price: ${executionPrice.toString()}`;
+                msg += `\n\\~ Profit in ${
+                  targetFromToken.symbol
+                }: ${utils.formatUnits(
+                  profitInTargetFromToken,
+                  targetFromToken.decimals
+                )}`;
+                msg += `\n\\~ Profit in ${
+                  targetToToken.symbol
+                }: ${utils.formatUnits(
+                  profitInTargetToToken,
+                  targetToToken.decimals
+                )}`;
+
+                msg += `\n---`;
+
+                msg += `\n\\~ Buy Attack Amount: ${parseFloat(
+                  utils.formatUnits(buyAttackAmount, targetFromToken.decimals)
+                ).toString()} ${targetFromToken.symbol}`;
+
+                msg += `\nBuy Tx Status: ${
+                  buyErrorMsg?.replaceAll('(', '\\(').replaceAll(')', '\\)') ||
+                  'Success'
+                }`;
+                msg += `\nSell Tx Status: ${
+                  sellErrorMsg?.replaceAll('(', '\\(').replaceAll(')', '\\)') ||
+                  'Success'
+                }`;
+
+                msg += `\n---`;
+
+                sendMessage(msg);
 
                 await sleep(9000);
                 this._broadcastedTx = false;
