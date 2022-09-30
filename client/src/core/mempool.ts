@@ -211,7 +211,7 @@ class Mempool {
 
           if (targetSlippage < 0.001) {
             console.log(
-              `Skipping: ${targetHash} Target slippage ${targetSlippage.toFixed(
+              `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
                 4
               )} is < 0.1%`
             );
@@ -224,8 +224,7 @@ class Mempool {
             (
               parseFloat(
                 utils.formatUnits(executionPrice, targetToToken.decimals)
-              ) *
-              (targetSlippage + 1)
+              ) * parseFloat((targetSlippage + 1).toFixed(4))
             ).toFixed(6),
             targetToToken.decimals
           );
@@ -265,7 +264,7 @@ class Mempool {
               !this.tokensToMonitor.has(targetToToken.address.toLowerCase())
             ) {
               console.log(
-                `Skipping: ${targetToToken.address} is not in the list of tokens to monitor`
+                `Skipping: Token ${targetToToken.address} is not in the list of tokens to monitor`
               );
               return;
             }
@@ -301,7 +300,7 @@ class Mempool {
             if (success) {
               nonce += 1;
               // broadcast sell tx
-              await sleep(500);
+              await sleep(200);
               let sell_route = [...path].reverse();
               let { success, msg } = await this.sell(
                 router,
