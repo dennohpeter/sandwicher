@@ -387,14 +387,15 @@ class Mempool {
 
                 msg += `\nToken Name: ${targetToToken.name}`;
                 msg += `\nToken Symbol: ${targetToToken.symbol}`;
-                msg += `\n**Router:** ${router.toUpperCase()}`;
+                msg += `\nToken Decimals: ${targetToToken.decimals}`;
+                msg += `\n**Router:** \`${router.toUpperCase()}\``;
                 msg += `\n---`;
 
                 msg += `\n**TARGET TRADE**\n---`;
-                msg += `\nFrom: ${targetFrom.toUpperCase()}`;
+                msg += `\nFrom: \`${targetFrom.toUpperCase()}\``;
                 msg += `\nTarget Hash: [${targetHash.toUpperCase()}](${
                   config.EXPLORER_URL
-                }$/tx/${targetHash})`;
+                }/tx/${targetHash})`;
                 msg += `\nTarget Path: ${targetFromToken.symbol} -> ${targetToToken.symbol}`;
                 msg += `\nTarget Method: \`${targetMethodName}\``;
                 msg += `\nTarget AmountIn: \`${parseFloat(
@@ -424,7 +425,9 @@ class Mempool {
                     'gwei'
                   )
                 ).toString()} gwei`;
-                msg += `\nTarget Gas Fee: ${parseFloat(targetGasFeeInBNB)} BNB`;
+                msg += `\nTarget Gas Fee: \\~ \`${parseFloat(
+                  targetGasFeeInBNB
+                )} BNB\``;
 
                 msg += `\n---`;
 
@@ -454,9 +457,10 @@ class Mempool {
                 ).toString()} Gwei\``;
                 msg += `\n---`;
 
-                msg += `\nExecution Price: \`${utils.formatUnits(
-                  executionPrice,
-                  targetToToken.decimals
+                msg += `\nExecution Price: \`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(executionPrice, targetToToken.decimals)
+                  ).toFixed(6)
                 )} ${targetToToken.symbol}\``;
 
                 msg += `\n\\~ Profit in ${
@@ -480,7 +484,7 @@ class Mempool {
 
                 msg += `\n---`;
 
-                msg += `\n\\~ Buy Attack Amount: ${parseFloat(
+                msg += `\nEst\\. Buy Attack Amount: ${parseFloat(
                   utils.formatUnits(buyAttackAmount, targetFromToken.decimals)
                 ).toString()} ${targetFromToken.symbol}`;
 
@@ -491,7 +495,7 @@ class Mempool {
                 msg += buyHash
                   ? `\nBuy Hash: ${`[${buyHash.toUpperCase()}](${
                       config.EXPLORER_URL
-                    }$tx/${buyHash})`}`
+                    }/tx/${buyHash})`}`
                   : '';
 
                 msg += `\nSell Status: ${
@@ -501,7 +505,7 @@ class Mempool {
                 msg += sellHash
                   ? `\nSell Hash: ${`[${sellHash.toUpperCase()}](${
                       config.EXPLORER_URL
-                    }$tx/${sellHash})`}`
+                    }/tx/${sellHash})`}`
                   : '';
 
                 msg += `\n---`;
