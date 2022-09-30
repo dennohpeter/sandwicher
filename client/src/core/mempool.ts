@@ -187,11 +187,12 @@ class Mempool {
           //       )
           // ) {
           // get execution price from sdk
-          let [_, executionPrice] = await this.getAmountsOut(
+          let amounts = await this.getAmountsOut(
             router,
             path,
             targetAmountInWei
           );
+          let executionPrice = amounts[amounts.length - 1];
 
           console.log('***************************************');
 
@@ -229,7 +230,7 @@ class Mempool {
           );
 
           // let buyAttackAmount = targetAmountInWei.mul(100 - targetSlippage);
-          let amountIn = utils.parseUnits(
+          let amountIn2 = utils.parseUnits(
             (
               parseFloat(
                 utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
@@ -239,7 +240,7 @@ class Mempool {
             targetFromToken.decimals
           );
 
-          amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
+          let amountIn = utils.parseUnits('0.01', targetFromToken.decimals);
 
           if (
             profitInTargetFromToken.gt(0)
@@ -339,7 +340,7 @@ class Mempool {
 
             targetSlippage,
             amountIn: utils.formatUnits(amountIn, targetFromToken.decimals),
-            amountIn2: utils.parseUnits('0.01', targetFromToken.decimals),
+            amountIn2: utils.formatUnits(amountIn2, targetFromToken.decimals),
             timestamp: new Date(targetTimestamp || 0 * 1000).toISOString(),
           });
         }
