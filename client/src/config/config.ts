@@ -74,7 +74,7 @@ export const config = {
   /**
    * BNB amount you will spend
    */
-  BNB_BUY_AMOUNT: 0.1,
+  BNB_BUY_AMOUNT: 0.01,
 
   /**
    * USD/C/T you will spend if target method was
