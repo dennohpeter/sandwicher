@@ -322,53 +322,65 @@ class Mempool {
                 );
 
                 console.log({ success, msg: msg || `Sell tx sent` });
+
+                let targetGasFeeInBNB = utils.formatEther(
+                  targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
+                );
+
+                console.log({
+                  router,
+                  targetHash,
+                  targetFrom,
+                  targetAmount: parseFloat(
+                    utils.formatUnits(
+                      targetAmountInWei,
+                      targetFromToken.decimals
+                    )
+                  ),
+                  path,
+                  targetFromToken,
+                  targetToToken,
+                  targetMethodName,
+                  targetGasLimit: targetGasLimit.toNumber(),
+                  targetGasPriceInGwei: `${parseFloat(
+                    utils.formatUnits(
+                      targetGasPriceInWei || constants.Zero,
+                      'gwei'
+                    )
+                  ).toString()} gwei`,
+                  targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
+                  targetAmountOutMin: targetAmountOutMin.toString(),
+                  executionPrice: executionPrice.toString(),
+                  newExecutionPrice: newExecutionPrice.toString(),
+                  profitInTargetFromToken: utils.formatUnits(
+                    profitInTargetFromToken,
+                    targetFromToken.decimals
+                  ),
+                  profitInTargetToToken: utils.formatUnits(
+                    profitInTargetToToken,
+                    targetToToken.decimals
+                  ),
+
+                  targetSlippage,
+                  amountIn: utils.formatUnits(
+                    amountIn,
+                    targetFromToken.decimals
+                  ),
+                  amountIn2: utils.formatUnits(
+                    buyAttackAmount,
+                    targetFromToken.decimals
+                  ),
+                  timestamp: new Date(
+                    targetTimestamp || 0 * 1000
+                  ).toISOString(),
+                });
+
                 await sleep(9000);
                 this._broadcastedTx = false;
               }
             } else {
               console.info(`Skipping: Tx ${targetHash} already broadcasted`);
             }
-
-            let targetGasFeeInBNB = utils.formatEther(
-              targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
-            );
-
-            console.log({
-              router,
-              targetHash,
-              targetFrom,
-              targetAmount: parseFloat(
-                utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-              ),
-              path,
-              targetFromToken,
-              targetToToken,
-              targetMethodName,
-              targetGasLimit: targetGasLimit.toNumber(),
-              targetGasPriceInGwei: `${parseFloat(
-                utils.formatUnits(targetGasPriceInWei || constants.Zero, 'gwei')
-              ).toString()} gwei`,
-              targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
-              targetAmountOutMin: targetAmountOutMin.toString(),
-              executionPrice: executionPrice.toString(),
-              newExecutionPrice: newExecutionPrice.toString(),
-              profitInTargetFromToken: utils.formatUnits(
-                profitInTargetFromToken,
-                targetFromToken.decimals
-              ),
-              profitInTargetToToken: utils.formatUnits(
-                profitInTargetToToken,
-                targetToToken.decimals
-              ),
-
-              targetSlippage,
-              amountIn: utils.formatUnits(amountIn, targetFromToken.decimals),
-              amountIn2: utils.formatUnits(
-                buyAttackAmount,
-                targetFromToken.decimals
-              ),
-              timestamp: new Date(targetTimestamp || 0 * 1000).toISOString(),
-            });
           }
         }
       } catch (error) {
