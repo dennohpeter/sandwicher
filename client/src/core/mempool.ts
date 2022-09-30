@@ -241,9 +241,9 @@ class Mempool {
             targetFromToken.decimals
           );
 
-          if (buyAttackAmount.lt(amountIn)) {
+          if (buyAttackAmount.gt(0) && buyAttackAmount.lt(amountIn)) {
             console.info(
-              `Updating our amount In from ${utils.formatUnits(
+              `Adjusting our amount In from ${utils.formatUnits(
                 amountIn,
                 targetFromToken.decimals
               )} ${targetFromToken.symbol} to ${utils.formatUnits(
@@ -257,7 +257,8 @@ class Mempool {
           }
 
           if (
-            profitInTargetFromToken.gt(0)
+            profitInTargetFromToken.gt(0) &&
+            amountIn.gt(0)
             //  &&
             // (await this.isSafe({
             //   path,
@@ -274,7 +275,13 @@ class Mempool {
               return;
             }
 
-            let amountOutMin = constants.Zero;
+            let [_, amountOutMin] = await this.getAmountsOut(
+              router,
+              path,
+              amountIn
+            );
+
+            amountOutMin = amountOutMin.mul(997).div(1000);
 
             // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
             targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
@@ -366,7 +373,7 @@ class Mempool {
                     amountIn,
                     targetFromToken.decimals
                   ),
-                  amountIn2: utils.formatUnits(
+                  buyAttackAmount: utils.formatUnits(
                     buyAttackAmount,
                     targetFromToken.decimals
                   ),
