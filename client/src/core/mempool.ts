@@ -179,6 +179,40 @@ class Mempool {
           ]);
 
           // Check if target amountIn value  is > clients amountIn
+          console.log(`- - - `.repeat(10));
+
+          // get execution price from sdk
+          let amounts = await this.getAmountsOut(
+            router,
+            path,
+            targetAmountInWei
+          );
+          let executionPrice = amounts[amounts.length - 1];
+
+          // zone to execute buy and calculate estimations of gases
+          let { slippage: targetSlippage } = this.getSlippage({
+            executionPrice,
+            targetAmountOutMin,
+            targetMethodName,
+          });
+
+          if (!this.tokensToMonitor.has(targetToToken.address.toLowerCase())) {
+            console.log(
+              `Skipping: Token ${targetToToken.address} is not in the list of tokens to monitor`
+            );
+            return;
+          }
+
+          if (parseFloat(targetSlippage.toFixed(5)) < 0.001) {
+            //~ 0.1%
+            console.log(
+              `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
+                4
+              )} is < 0.1%`
+            );
+            return;
+          }
+
           if (
             targetAmountInWei.lt(
               utils.parseUnits(config.BNB_BUY_AMOUNT.toString())
@@ -191,35 +225,6 @@ class Mempool {
               )} ${targetFromToken.symbol} is < Our BNB Buy Amount: ${
                 config.BNB_BUY_AMOUNT
               } ${targetFromToken.symbol} `
-            );
-            return;
-          }
-          // get execution price from sdk
-          let amounts = await this.getAmountsOut(
-            router,
-            path,
-            targetAmountInWei
-          );
-          let executionPrice = amounts[amounts.length - 1];
-
-          console.log('***************************************');
-
-          /**
-           * zone to execute buy and calculate estimations of gases
-           */
-
-          let { slippage: targetSlippage } = this.getSlippage({
-            executionPrice,
-            targetAmountOutMin,
-            targetMethodName,
-          });
-
-          if (targetSlippage < 0.001) {
-            //~ 0.1%
-            console.log(
-              `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
-                4
-              )} is < 0.1%`
             );
             return;
           }
@@ -265,15 +270,6 @@ class Mempool {
             //   amountIn,
             // }))
           ) {
-            if (
-              !this.tokensToMonitor.has(targetToToken.address.toLowerCase())
-            ) {
-              console.log(
-                `Skipping: Token ${targetToToken.address} is not in the list of tokens to monitor`
-              );
-              return;
-            }
-
             // let [_, amountOutMin] = await this.getAmountsOut(
             //   router,
             //   path,
@@ -389,6 +385,7 @@ class Mempool {
             } else {
               console.info(`Skipping: Tx ${targetHash} already broadcasted`);
             }
+            console.log(`- - - `.repeat(10));
           }
         }
       } catch (error) {
