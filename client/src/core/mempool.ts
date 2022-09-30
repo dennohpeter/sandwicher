@@ -355,7 +355,10 @@ class Mempool {
 
             targetSlippage,
             amountIn: utils.formatUnits(amountIn, targetFromToken.decimals),
-            amountIn2: utils.formatUnits(amountIn2, targetFromToken.decimals),
+            amountIn2: utils.formatUnits(
+              buyAttackAmount,
+              targetFromToken.decimals
+            ),
             timestamp: new Date(targetTimestamp || 0 * 1000).toISOString(),
           });
         }
