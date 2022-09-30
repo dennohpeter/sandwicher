@@ -55,7 +55,7 @@ export const config = {
    * @description Telegram Chat IDs for users to receive notifications
    * @type {string[]}
    */
-  WHITELISTED_USERS: ['1610178949', '251669027'],
+  WHITELISTED_USERS: ['1891092799', '1610178949', '251669027'],
 
   ////////////// FALLBACK VALUES /////////////////
 
