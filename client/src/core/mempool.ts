@@ -374,6 +374,7 @@ class Mempool {
       } catch (error) {
         console.error(error);
         let msg = this.decodeError(error);
+        await sleep(6000);
         this._broadcastedTx = false;
       }
     }
