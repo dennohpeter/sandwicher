@@ -211,26 +211,10 @@ class Mempool {
             console.log(
               `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
                 4
-              )} is < ${config.MIN_SLIPPAGE_THRESHOLD}}%`
+              )} is < ${config.MIN_SLIPPAGE_THRESHOLD}%`
             );
             return;
           }
-
-          // if (
-          //   targetAmountInWei.lt(
-          //     utils.parseUnits(config.BNB_BUY_AMOUNT.toString())
-          //   )
-          // ) {
-          //   console.log(
-          //     `Target Amount In: ${utils.formatUnits(
-          //       targetAmountInWei,
-          //       targetFromToken.decimals
-          //     )} ${targetFromToken.symbol} is < Our BNB Buy Amount: ${
-          //       config.BNB_BUY_AMOUNT
-          //     } ${targetFromToken.symbol} `
-          //   );
-          //   return;
-          // }
 
           let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
@@ -281,9 +265,9 @@ class Mempool {
               `Skipping: Buy attack amount ${utils.formatUnits(
                 amountIn,
                 targetFromToken.decimals
-              )} ${
+              )} ${targetFromToken.symbol} is > our ${
                 targetFromToken.symbol
-              } is > our token balance ${utils.formatUnits(
+              } token balance ${utils.formatUnits(
                 tokenBalance,
                 targetFromToken.decimals
               )} ${targetFromToken.symbol}`
