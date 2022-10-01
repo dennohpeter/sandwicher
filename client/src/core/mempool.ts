@@ -234,7 +234,11 @@ class Mempool {
 
           let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
-          if (profitInTargetToToken.lt(0.02)) {
+          if (
+            parseFloat(
+              utils.formatUnits(profitInTargetToToken, targetToToken.decimals)
+            ) < 0.02
+          ) {
             console.log(
               `Skipping: Profit in ${targetToToken.symbol} is < 0.02 ${targetToToken.symbol}`
             );
