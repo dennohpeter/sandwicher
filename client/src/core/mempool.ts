@@ -242,25 +242,58 @@ class Mempool {
             .mul((targetSlippage * 10_000).toFixed(0))
             .div(10_000);
 
-          let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
+          // let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
 
-          let amountIn = utils.parseUnits(
+          let impact = await this.priceImpact({
+            router,
+            path,
+            amountIn: targetAmountInWei,
+          });
+
+          let buyAttackAmount = targetAmountInWei
+            .mul((targetSlippage * 10_000).toFixed(0))
+            .div(10_000)
+            .div((impact * 10_000).toFixed(0))
+            .mul(10_000);
+
+          let defaultAmountIn = utils.parseUnits(
             config.BNB_BUY_AMOUNT.toString(),
             targetFromToken.decimals
           );
 
-          if (buyAttackAmount.gt(0) && buyAttackAmount.lt(amountIn)) {
+          if (buyAttackAmount.lte(0)) {
+            console.log(`Skipping: Buy attack amount is <= 0`);
+            return;
+          }
+
+          // if (buyAttackAmount.lt(amountIn)) {
+          //   console.info(
+          //     `Adjusting our amount In from ${utils.formatUnits(
+          //       amountIn,
+          //       targetFromToken.decimals
+          //     )} ${targetFromToken.symbol} to ${utils.formatUnits(
+          //       buyAttackAmount,
+          //       targetFromToken.decimals
+          //     )} ${targetFromToken.symbol},\nTx: ${targetHash}`
+          //   );
+
+          //   amountIn = buyAttackAmount;
+          // }
+
+          let amountIn = buyAttackAmount;
+
+          if (buyAttackAmount.gt(defaultAmountIn)) {
             console.info(
               `Adjusting our amount In from ${utils.formatUnits(
-                amountIn,
+                buyAttackAmount,
                 targetFromToken.decimals
               )} ${targetFromToken.symbol} to ${utils.formatUnits(
-                buyAttackAmount,
+                defaultAmountIn,
                 targetFromToken.decimals
               )} ${targetFromToken.symbol},\nTx: ${targetHash}`
             );
 
-            amountIn = buyAttackAmount;
+            amountIn = defaultAmountIn;
           }
 
           if (
@@ -804,6 +837,59 @@ class Mempool {
     return {
       slippage,
     };
+  };
+
+  private priceImpact = async (_params: {
+    path: string[];
+    router: string;
+    amountIn: BigNumber;
+  }) => {
+    let { path, amountIn } = _params;
+
+    let routerContract = new Contract(
+      _params.router,
+      ['function factory() external view returns (address)'],
+      this._provider
+    );
+
+    let factoryContract = new Contract(
+      await routerContract.factory(),
+      [
+        'function getPair(address tokenA, address tokenB) external view returns (address pair)',
+      ],
+      this._provider
+    );
+
+    let token0 = path[path.length - 2];
+    let token1 = path[path.length - 1];
+    let pairAddress = await factoryContract.getPair(token0, token1);
+
+    let pairContract = new Contract(
+      pairAddress,
+      [
+        'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+        `function token0() external view returns (address)`,
+      ],
+      this._provider
+    );
+
+    let [reserve0, reserve1] = await pairContract.getReserves();
+
+    let bnbReserves =
+      token0 === (await pairContract.token0()) ? reserve0 : reserve1;
+
+    console.log({ bnbReserves });
+
+    let newBnbReserves = bnbReserves.add(amountIn);
+
+    console.log({ newBnbReserves });
+
+    // let priceImpact = newBnbReserves.sub(bnbReserves).div(bnbReserves);
+    let priceImpact = amountIn.div(newBnbReserves).mul(100);
+
+    console.log({ priceImpact });
+
+    return parseFloat(priceImpact.toString());
   };
 
   private recoverError = (error: any) => {
