@@ -216,23 +216,30 @@ class Mempool {
             return;
           }
 
-          if (
-            targetAmountInWei.lt(
-              utils.parseUnits(config.BNB_BUY_AMOUNT.toString())
-            )
-          ) {
+          // if (
+          //   targetAmountInWei.lt(
+          //     utils.parseUnits(config.BNB_BUY_AMOUNT.toString())
+          //   )
+          // ) {
+          //   console.log(
+          //     `Target Amount In: ${utils.formatUnits(
+          //       targetAmountInWei,
+          //       targetFromToken.decimals
+          //     )} ${targetFromToken.symbol} is < Our BNB Buy Amount: ${
+          //       config.BNB_BUY_AMOUNT
+          //     } ${targetFromToken.symbol} `
+          //   );
+          //   return;
+          // }
+
+          let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
+
+          if (profitInTargetToToken.lt(0.02)) {
             console.log(
-              `Target Amount In: ${utils.formatUnits(
-                targetAmountInWei,
-                targetFromToken.decimals
-              )} ${targetFromToken.symbol} is < Our BNB Buy Amount: ${
-                config.BNB_BUY_AMOUNT
-              } ${targetFromToken.symbol} `
+              `Skipping: Profit in ${targetToToken.symbol} is < 0.02 ${targetToToken.symbol}`
             );
             return;
           }
-
-          let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
           let newExecutionPrice = executionPrice
             .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
@@ -250,50 +257,34 @@ class Mempool {
             amountIn: targetAmountInWei,
           });
 
-          let buyAttackAmount = targetAmountInWei
+          let amountIn = targetAmountInWei
             .mul((targetSlippage * 10_000).toFixed(0))
             .div(10_000)
             .div((impact * 10_000).toFixed(0))
             .mul(10_000);
 
-          let defaultAmountIn = utils.parseUnits(
-            config.BNB_BUY_AMOUNT.toString(),
-            targetFromToken.decimals
-          );
-
-          if (buyAttackAmount.lte(0)) {
+          if (amountIn.lte(0)) {
             console.log(`Skipping: Buy attack amount is <= 0`);
             return;
           }
 
-          // if (buyAttackAmount.lt(amountIn)) {
-          //   console.info(
-          //     `Adjusting our amount In from ${utils.formatUnits(
-          //       amountIn,
-          //       targetFromToken.decimals
-          //     )} ${targetFromToken.symbol} to ${utils.formatUnits(
-          //       buyAttackAmount,
-          //       targetFromToken.decimals
-          //     )} ${targetFromToken.symbol},\nTx: ${targetHash}`
-          //   );
+          let tokenBalance = await this.getTokenBalance(
+            targetFromToken.address
+          );
 
-          //   amountIn = buyAttackAmount;
-          // }
-
-          let amountIn = buyAttackAmount;
-
-          if (buyAttackAmount.gt(defaultAmountIn)) {
-            console.info(
-              `Adjusting our amount In from ${utils.formatUnits(
-                buyAttackAmount,
+          if (amountIn.gt(tokenBalance)) {
+            console.log(
+              `Skipping: Buy attack amount ${utils.formatUnits(
+                amountIn,
                 targetFromToken.decimals
-              )} ${targetFromToken.symbol} to ${utils.formatUnits(
-                defaultAmountIn,
+              )} ${
+                targetFromToken.symbol
+              } is > our token balance ${utils.formatUnits(
+                tokenBalance,
                 targetFromToken.decimals
-              )} ${targetFromToken.symbol},\nTx: ${targetHash}`
+              )} ${targetFromToken.symbol}`
             );
-
-            amountIn = defaultAmountIn;
+            return;
           }
 
           if (
@@ -413,10 +404,7 @@ class Mempool {
                     amountIn,
                     targetFromToken.decimals
                   ),
-                  buyAttackAmount: utils.formatUnits(
-                    buyAttackAmount,
-                    targetFromToken.decimals
-                  ),
+
                   timestamp: new Date(
                     targetTimestamp || 0 * 1000
                   ).toISOString(),
@@ -432,7 +420,7 @@ class Mempool {
                 msg += `\n**BUY TRADE**\n---`;
 
                 msg += `\nEst. AmountIn: \`${parseFloat(
-                  utils.formatUnits(buyAttackAmount, targetFromToken.decimals)
+                  utils.formatUnits(amountIn, targetFromToken.decimals)
                 ).toString()} ${targetFromToken.symbol}\``;
                 msg += `\nAmountIn: \`${parseFloat(
                   parseFloat(
