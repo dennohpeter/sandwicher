@@ -248,11 +248,13 @@ class Mempool {
               amountIn: targetAmountInWei,
             });
 
-            let amountIn = targetAmountInWei
-              .mul((targetSlippage * 10_000).toFixed(0))
-              .div(10_000)
-              .div((impact * 10_000).toFixed(0))
-              .mul(10_000);
+            // let amountIn = targetAmountInWei
+            //   .mul((targetSlippage * 10_000).toFixed(0))
+            //   .div(10_000)
+            //   .div((impact * 10_000).toFixed(0))
+            //   .mul(10_000);
+
+            let amountIn = targetAmountInWei.div(2);
 
             if (amountIn.lte(0)) {
               console.log(
@@ -275,8 +277,7 @@ class Mempool {
                 } token balance ${utils.formatUnits(
                   tokenBalance,
                   targetFromToken.decimals
-                )} ${targetFromToken.symbol},
-              Token: ${targetToToken.symbol}`
+                )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`
               );
               return;
             }
