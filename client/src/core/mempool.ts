@@ -885,11 +885,11 @@ class Mempool {
     console.log({ newBnbReserves });
 
     // let priceImpact = newBnbReserves.sub(bnbReserves).div(bnbReserves);
-    let priceImpact = amountIn.div(newBnbReserves).mul(100);
+    let priceImpact = ((amountIn as any) / newBnbReserves) * 100;
 
     console.log({ priceImpact });
 
-    return parseFloat(priceImpact.toString());
+    return priceImpact;
   };
 
   private recoverError = (error: any) => {
