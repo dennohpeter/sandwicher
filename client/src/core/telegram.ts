@@ -32,7 +32,7 @@ const sendMessage = async (message: string) => {
         disable_web_page_preview: true,
       });
     } catch (error) {
-      console.error(error);
+      // console.error(error);
     }
   }
 };
