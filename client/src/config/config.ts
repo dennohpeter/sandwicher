@@ -65,6 +65,13 @@ export const config = {
   DEFAULT_GAS_LIMIT: 400_000,
 
   /**
+   * @description MIN_SLIPPAGE_THRESHOLD is the minimum slippage threshold that we allow
+   * @type {number}
+   * @default 1%
+   */
+  MIN_SLIPPAGE_THRESHOLD: 1,
+
+  /**
    * @description ADDITIONAL_BUY_GAS that we use in front-running the target
    */
   ADDITIONAL_BUY_GAS: 1.500014292,
