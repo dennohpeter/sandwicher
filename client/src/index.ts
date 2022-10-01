@@ -15,11 +15,11 @@ const Main = async () => {
     let token = args[1];
 
     if (action === 'sell') {
-      let sell = await mempoolWrapper.sell(
-        config.PANCAKE_ROUTER_ADDRESS,
-        constants.Zero,
-        [token, config.WBNB_ADDRESS]
-      );
+      let sell = await mempoolWrapper.sell({
+        router: config.PANCAKE_ROUTER_ADDRESS,
+        amountOutMin: constants.Zero,
+        path: [token, config.WBNB_ADDRESS],
+      });
       console.log(sell);
     }
 
