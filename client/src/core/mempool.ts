@@ -344,6 +344,13 @@ class Mempool {
                   utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
                 );
 
+                let targetGasPriceInGwei = `${parseFloat(
+                  utils.formatUnits(
+                    targetGasPriceInWei || constants.Zero,
+                    'gwei'
+                  )
+                ).toString()} Gwei`;
+
                 console.log({
                   router,
                   targetHash,
@@ -354,12 +361,7 @@ class Mempool {
                   targetToToken,
                   targetMethodName,
                   targetGasLimit: targetGasLimit.toNumber(),
-                  targetGasPriceInGwei: `${parseFloat(
-                    utils.formatUnits(
-                      targetGasPriceInWei || constants.Zero,
-                      'gwei'
-                    )
-                  ).toString()} gwei`,
+                  targetGasPriceInGwei,
                   targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
                   targetAmountOutMin: targetAmountOutMin.toString(),
                   executionPrice: executionPrice.toString(),
@@ -389,7 +391,7 @@ class Mempool {
 
                 let msg = `**NEW TRADE NOTIFICATION**\n---`;
 
-                msg += `\nToken Name: ${targetToToken.name}, ${targetToToken.symbol}, ${targetToToken.decimals}`;
+                msg += `\nToken: ${targetToToken.name}, ${targetToToken.symbol}, ${targetToToken.decimals}`;
                 msg += `\nToken Address: \`${targetToToken.address}\``;
                 msg += `\nRouter: \`${targetToToken.address}\``;
                 msg += `\n---`;
@@ -414,6 +416,20 @@ class Mempool {
                     }/tx/${buyHash})`}`
                   : '';
 
+                msg += `\nGas Price: \`${parseFloat(
+                  parseFloat(
+                    utils.formatUnits(
+                      targetGasPriceInWei.add(
+                        utils.parseUnits(
+                          config.ADDITIONAL_BUY_GAS.toString(),
+                          'gwei'
+                        )
+                      ),
+                      'gwei'
+                    )
+                  ).toFixed(6)
+                ).toString()} Gwei\``;
+
                 msg += `\n- - -`;
 
                 msg += `\n**TARGET TRADE**\n---`;
@@ -428,12 +444,7 @@ class Mempool {
                   4
                 )}%\``;
 
-                msg += `\nTarget Gas Price: \`${parseFloat(
-                  utils.formatUnits(
-                    targetGasPriceInWei || constants.Zero,
-                    'gwei'
-                  )
-                ).toString()} Gwei\``;
+                msg += `\nTarget Gas Price: \`${targetGasPriceInGwei}\``;
 
                 msg += `\n- - -`;
 
