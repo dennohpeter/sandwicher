@@ -145,18 +145,18 @@ class Mempool {
 
   private _process = async (receipt: providers.TransactionResponse) => {
     // implement transaction processing
-    let {
-      value: targetAmountInWei,
-      to: router,
-      gasPrice: targetGasPriceInWei,
-      gasLimit: targetGasLimit,
-      hash: targetHash,
-      from: targetFrom,
-      timestamp: targetTimestamp,
-    } = receipt;
+    try {
+      let {
+        value: targetAmountInWei,
+        to: router,
+        gasPrice: targetGasPriceInWei,
+        gasLimit: targetGasLimit,
+        hash: targetHash,
+        from: targetFrom,
+        timestamp: targetTimestamp,
+      } = receipt;
 
-    if (router && this.supportedRouters.has(router?.toLowerCase() || '')) {
-      try {
+      if (router && this.supportedRouters.has(router?.toLowerCase() || '')) {
         // decode tx data
         const tx = this._pancakeSwap.parseTransaction({
           data: receipt.data,
@@ -166,355 +166,369 @@ class Mempool {
 
         let { path, amountOutMin: targetAmountOutMin } = targetArgs;
 
-        //if the path is undefined stop execution and return
-        if (!path) return;
+        try {
+          //if the path is undefined stop execution and return
+          if (!path) return;
 
-        // Check if target method is in the supported list of buy methods
-        if (
-          this.supported_buy_methods.has(targetMethodName) &&
-          this.supported_buy_tokens.has(path[0].toLowerCase())
-        ) {
-          let [targetFromToken, targetToToken] = await this.fetchTokenData([
-            path[0],
-            path[path.length - 1],
-          ]);
-
-          // Check if target amountIn value  is > clients amountIn
-          console.log(`- - - `.repeat(10));
-
-          // get execution price from sdk
-          let amounts = await this.getAmountsOut(
-            router,
-            path,
-            targetAmountInWei
-          );
-          let executionPrice = amounts[amounts.length - 1];
-
-          // zone to execute buy and calculate estimations of gases
-          let { slippage: targetSlippage } = this.getSlippage({
-            executionPrice,
-            targetAmountOutMin,
-            targetMethodName,
-          });
-
-          if (!this.tokensToMonitor.has(targetToToken.address.toLowerCase())) {
-            console.log(
-              `Skipping: Token ${targetToToken.address} is not in the list of tokens to monitor`
-            );
-            return;
-          }
-
+          // Check if target method is in the supported list of buy methods
           if (
-            parseFloat(targetSlippage.toFixed(5)) <
-            config.MIN_SLIPPAGE_THRESHOLD / 100 //~ 1%
+            this.supported_buy_methods.has(targetMethodName) &&
+            this.supported_buy_tokens.has(path[0].toLowerCase())
           ) {
-            console.log(
-              `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
-                4
-              )} is < ${config.MIN_SLIPPAGE_THRESHOLD}%`
-            );
-            return;
-          }
+            let [targetFromToken, targetToToken] = await this.fetchTokenData([
+              path[0],
+              path[path.length - 1],
+            ]);
 
-          let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
+            // Check if target amountIn value  is > clients amountIn
+            console.log(`- - - `.repeat(10));
 
-          if (
-            parseFloat(
-              utils.formatUnits(profitInTargetToToken, targetToToken.decimals)
-            ) < 0.02
-          ) {
-            console.log(
-              `Skipping: Profit in ${targetToToken.symbol} is < 0.02 ${targetToToken.symbol}`
-            );
-            return;
-          }
-
-          let newExecutionPrice = executionPrice
-            .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
-            .div(10_000);
-
-          let profitInTargetFromToken = targetAmountInWei
-            .mul((targetSlippage * 10_000).toFixed(0))
-            .div(10_000);
-
-          // let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
-
-          let impact = await this.priceImpact({
-            router,
-            path,
-            amountIn: targetAmountInWei,
-          });
-
-          let amountIn = targetAmountInWei
-            .mul((targetSlippage * 10_000).toFixed(0))
-            .div(10_000)
-            .div((impact * 10_000).toFixed(0))
-            .mul(10_000);
-
-          if (amountIn.lte(0)) {
-            console.log(`Skipping: Buy attack amount is <= 0`);
-            return;
-          }
-
-          let tokenBalance = await this.getTokenBalance(
-            targetFromToken.address
-          );
-
-          if (amountIn.gt(tokenBalance)) {
-            console.log(
-              `Skipping: Buy attack amount ${utils.formatUnits(
-                amountIn,
-                targetFromToken.decimals
-              )} ${targetFromToken.symbol} is > our ${
-                targetFromToken.symbol
-              } token balance ${utils.formatUnits(
-                tokenBalance,
-                targetFromToken.decimals
-              )} ${targetFromToken.symbol}`
-            );
-            return;
-          }
-
-          if (
-            profitInTargetFromToken.gt(0) &&
-            amountIn.gt(0)
-            //  &&
-            // (await this.isSafe({
-            //   path,
-            //   router,
-            //   amountIn,
-            // }))
-          ) {
-            let [_, amountOutMin] = await this.getAmountsOut(
+            // get execution price from sdk
+            let amounts = await this.getAmountsOut(
               router,
               path,
-              amountIn
+              targetAmountInWei
             );
+            let executionPrice = amounts[amounts.length - 1];
 
-            amountOutMin = amountOutMin.mul(900).div(1000);
+            // zone to execute buy and calculate estimations of gases
+            let { slippage: targetSlippage } = this.getSlippage({
+              executionPrice,
+              targetAmountOutMin,
+              targetMethodName,
+            });
 
-            // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
-            targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
-
-            let nonce = await this._provider.getTransactionCount(
-              config.PUBLIC_KEY
-            );
-
-            if (!this._broadcastedTx) {
-              this._broadcastedTx = true;
-              // broadcast buy tx
-              let {
-                success,
-                msg: buyErrorMsg,
-                hash: buyHash,
-              } = await this.buy(
-                {
-                  router,
-                  amountIn,
-                  amountOutMin,
-                  path,
-                },
-                {
-                  gasPrice: targetGasPriceInWei.add(
-                    utils.parseUnits(
-                      config.ADDITIONAL_BUY_GAS.toString(),
-                      'gwei'
-                    )
-                  ),
-                  // gasLimit: config.DEFAULT_GAS_LIMIT,
-                  nonce,
-                }
+            if (
+              !this.tokensToMonitor.has(targetToToken.address.toLowerCase())
+            ) {
+              console.log(
+                `Skipping: Token ${targetToToken.address} is not in the list of tokens to monitor`
               );
-              console.log({ success, msg: buyErrorMsg || `Buy tx sent` });
+              return;
+            }
 
-              if (success) {
-                nonce += 1;
-                // broadcast sell tx
-                await sleep(200);
+            if (
+              parseFloat(targetSlippage.toFixed(5)) <
+              config.MIN_SLIPPAGE_THRESHOLD / 100 //~ 1%
+            ) {
+              console.log(
+                `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
+                  4
+                )} is < ${config.MIN_SLIPPAGE_THRESHOLD}%`
+              );
+              return;
+            }
 
-                let sell_route = [...path].reverse();
+            let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
+            if (
+              parseFloat(
+                utils.formatUnits(profitInTargetToToken, targetToToken.decimals)
+              ) < 0.02
+            ) {
+              console.log(
+                `Skipping: Profit in ${targetToToken.symbol} is < 0.02 ${targetToToken.symbol}`
+              );
+              return;
+            }
+
+            let newExecutionPrice = executionPrice
+              .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
+              .div(10_000);
+
+            let profitInTargetFromToken = targetAmountInWei
+              .mul((targetSlippage * 10_000).toFixed(0))
+              .div(10_000);
+
+            // let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
+
+            let impact = await this.priceImpact({
+              router,
+              path,
+              amountIn: targetAmountInWei,
+            });
+
+            let amountIn = targetAmountInWei
+              .mul((targetSlippage * 10_000).toFixed(0))
+              .div(10_000)
+              .div((impact * 10_000).toFixed(0))
+              .mul(10_000);
+
+            if (amountIn.lte(0)) {
+              console.log(
+                `Skipping: Buy attack amount is <= 0, Token: ${targetToToken.symbol}`
+              );
+              return;
+            }
+
+            let tokenBalance = await this.getTokenBalance(
+              targetFromToken.address
+            );
+
+            if (amountIn.gt(tokenBalance)) {
+              console.log(
+                `Skipping: Buy attack amount ${utils.formatUnits(
+                  amountIn,
+                  targetFromToken.decimals
+                )} ${targetFromToken.symbol} is > our ${
+                  targetFromToken.symbol
+                } token balance ${utils.formatUnits(
+                  tokenBalance,
+                  targetFromToken.decimals
+                )} ${targetFromToken.symbol},
+              Token: ${targetToToken.symbol}`
+              );
+              return;
+            }
+
+            if (
+              profitInTargetFromToken.gt(0) &&
+              amountIn.gt(0)
+              //  &&
+              // (await this.isSafe({
+              //   path,
+              //   router,
+              //   amountIn,
+              // }))
+            ) {
+              let [_, amountOutMin] = await this.getAmountsOut(
+                router,
+                path,
+                amountIn
+              );
+
+              amountOutMin = amountOutMin.mul(900).div(1000);
+
+              // targetGasPrice will be 0 when target is using maxPriorityFeePerGas and maxFeePerGas
+              targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
+
+              let nonce = await this._provider.getTransactionCount(
+                config.PUBLIC_KEY
+              );
+
+              if (!this._broadcastedTx) {
+                this._broadcastedTx = true;
+                // broadcast buy tx
                 let {
                   success,
-                  msg: sellErrorMsg,
-                  hash: sellHash,
-                } = await this.sell(
-                  { router, amountOutMin: constants.Zero, path: sell_route },
+                  msg: buyErrorMsg,
+                  hash: buyHash,
+                } = await this.buy(
                   {
-                    gasLimit: config.DEFAULT_GAS_LIMIT,
+                    router,
+                    amountIn,
+                    amountOutMin,
+                    path,
+                  },
+                  {
+                    gasPrice: targetGasPriceInWei.add(
+                      utils.parseUnits(
+                        config.ADDITIONAL_BUY_GAS.toString(),
+                        'gwei'
+                      )
+                    ),
+                    // gasLimit: config.DEFAULT_GAS_LIMIT,
                     nonce,
                   }
                 );
+                console.log({ success, msg: buyErrorMsg || `Buy tx sent` });
 
-                console.log({ success, msg: sellErrorMsg || `Sell tx sent` });
+                if (success) {
+                  nonce += 1;
+                  // broadcast sell tx
+                  await sleep(200);
 
-                let targetGasFeeInBNB = utils.formatEther(
-                  targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
-                );
+                  let sell_route = [...path].reverse();
 
-                let targetAmount = parseFloat(
-                  utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
-                );
+                  let {
+                    success,
+                    msg: sellErrorMsg,
+                    hash: sellHash,
+                  } = await this.sell(
+                    { router, amountOutMin: constants.Zero, path: sell_route },
+                    {
+                      gasLimit: config.DEFAULT_GAS_LIMIT,
+                      nonce,
+                    }
+                  );
 
-                let targetGasPriceInGwei = `${parseFloat(
-                  utils.formatUnits(
-                    targetGasPriceInWei || constants.Zero,
-                    'gwei'
-                  )
-                ).toString()} Gwei`;
+                  console.log({ success, msg: sellErrorMsg || `Sell tx sent` });
 
-                console.log({
-                  router,
-                  targetHash,
-                  targetFrom,
-                  targetAmount,
-                  path,
-                  targetFromToken,
-                  targetToToken,
-                  targetMethodName,
-                  targetGasLimit: targetGasLimit.toNumber(),
-                  targetGasPriceInGwei,
-                  targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
-                  targetAmountOutMin: targetAmountOutMin.toString(),
-                  executionPrice: executionPrice.toString(),
-                  newExecutionPrice: newExecutionPrice.toString(),
-                  profitInTargetFromToken: utils.formatUnits(
-                    profitInTargetFromToken,
-                    targetFromToken.decimals
-                  ),
-                  profitInTargetToToken: utils.formatUnits(
-                    profitInTargetToToken,
-                    targetToToken.decimals
-                  ),
+                  let targetGasFeeInBNB = utils.formatEther(
+                    targetGasLimit.mul(targetGasPriceInWei || constants.Zero)
+                  );
 
-                  targetSlippage,
-                  amountIn: utils.formatUnits(
-                    amountIn,
-                    targetFromToken.decimals
-                  ),
-
-                  timestamp: new Date(
-                    targetTimestamp || 0 * 1000
-                  ).toISOString(),
-                });
-
-                let msg = `**NEW TRADE NOTIFICATION**\n---`;
-
-                msg += `\nToken: ${targetToToken.name}, ${targetToToken.symbol}, ${targetToToken.decimals}`;
-                msg += `\nToken Address: \`${targetToToken.address}\``;
-                msg += `\nRouter: \`${targetToToken.address}\``;
-                msg += `\n---`;
-
-                msg += `\n**BUY TRADE**\n---`;
-
-                msg += `\nEst. AmountIn: \`${parseFloat(
-                  utils.formatUnits(amountIn, targetFromToken.decimals)
-                ).toString()} ${targetFromToken.symbol}\``;
-                msg += `\nAmountIn: \`${parseFloat(
-                  parseFloat(
-                    utils.formatUnits(amountIn, targetFromToken.decimals)
-                  ).toFixed(6)
-                )} ${targetFromToken.symbol}\``;
-                msg += `\nBuy Status: ${
-                  buyErrorMsg?.replaceAll('(', '\\(').replaceAll(')', '\\)') ||
-                  '✔️'
-                }`;
-                msg += buyHash
-                  ? `\nBuy Hash: ${`[${buyHash.toUpperCase()}](${
-                      config.EXPLORER_URL
-                    }/tx/${buyHash})`}`
-                  : '';
-
-                msg += `\nGas Price: \`${parseFloat(
-                  parseFloat(
+                  let targetAmount = parseFloat(
                     utils.formatUnits(
-                      targetGasPriceInWei.add(
-                        utils.parseUnits(
-                          config.ADDITIONAL_BUY_GAS.toString(),
-                          'gwei'
-                        )
-                      ),
-                      'gwei'
-                    )
-                  ).toFixed(6)
-                ).toString()} Gwei\``;
-
-                msg += `\n- - -`;
-
-                msg += `\n**TARGET TRADE**\n---`;
-                msg += `\nFrom: \`${targetFrom.toUpperCase()}\``;
-                msg += `\nTarget Hash: [${targetHash.toUpperCase()}](${
-                  config.EXPLORER_URL
-                }/tx/${targetHash})`;
-                msg += `\nTarget AmountIn: \`${parseFloat(
-                  targetAmount.toFixed(6)
-                )} ${targetFromToken.symbol}\``;
-                msg += `\nTarget Slippage: \`${(targetSlippage * 100).toFixed(
-                  4
-                )}%\``;
-
-                msg += `\nTarget Gas Price: \`${targetGasPriceInGwei}\``;
-
-                msg += `\n- - -`;
-
-                msg += `\n**SELL TRADE**\n---`;
-                msg += `\nSell Status: ${
-                  sellErrorMsg?.replaceAll('(', '\\(').replaceAll(')', '\\)') ||
-                  '✔️'
-                }`;
-                msg += sellHash
-                  ? `\nSell Hash: ${`[${sellHash.toUpperCase()}](${
-                      config.EXPLORER_URL
-                    }/tx/${sellHash})`}`
-                  : '';
-
-                msg += `\n---`;
-
-                msg += `\nExecution Price: \`${parseFloat(
-                  parseFloat(
-                    utils.formatUnits(executionPrice, targetToToken.decimals)
-                  ).toFixed(6)
-                )} ${targetToToken.symbol}\``;
-
-                msg += `\nEst. Profit in ${
-                  targetFromToken.symbol
-                }: \`${parseFloat(
-                  parseFloat(
-                    utils.formatUnits(
-                      profitInTargetFromToken,
+                      targetAmountInWei,
                       targetFromToken.decimals
                     )
-                  ).toFixed(6)
-                )}\``;
-                msg += `\nEst. Profit in ${
-                  targetToToken.symbol
-                }: \`${parseFloat(
-                  parseFloat(
+                  );
+
+                  let targetGasPriceInGwei = `${parseFloat(
                     utils.formatUnits(
+                      targetGasPriceInWei || constants.Zero,
+                      'gwei'
+                    )
+                  ).toString()} Gwei`;
+
+                  console.log({
+                    router,
+                    targetHash,
+                    targetFrom,
+                    targetAmount,
+                    path,
+                    targetFromToken,
+                    targetToToken,
+                    targetMethodName,
+                    targetGasLimit: targetGasLimit.toNumber(),
+                    targetGasPriceInGwei,
+                    targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
+                    targetAmountOutMin: targetAmountOutMin.toString(),
+                    executionPrice: executionPrice.toString(),
+                    newExecutionPrice: newExecutionPrice.toString(),
+                    profitInTargetFromToken: utils.formatUnits(
+                      profitInTargetFromToken,
+                      targetFromToken.decimals
+                    ),
+                    profitInTargetToToken: utils.formatUnits(
                       profitInTargetToToken,
                       targetToToken.decimals
-                    )
-                  ).toFixed(6)
-                )}\``;
-                msg += `\n---`;
+                    ),
 
-                sendMessage(msg);
+                    targetSlippage,
+                    amountIn: utils.formatUnits(
+                      amountIn,
+                      targetFromToken.decimals
+                    ),
 
-                await sleep(9000);
-                this._broadcastedTx = false;
+                    timestamp: new Date(
+                      targetTimestamp || 0 * 1000
+                    ).toISOString(),
+                  });
+
+                  let msg = `**NEW TRADE NOTIFICATION**\n---`;
+
+                  msg += `\nToken: ${targetToToken.name}, ${targetToToken.symbol}, ${targetToToken.decimals}`;
+                  msg += `\nToken Address: \`${targetToToken.address}\``;
+                  msg += `\nRouter: \`${targetToToken.address}\``;
+                  msg += `\n---`;
+
+                  msg += `\n**BUY TRADE**\n---`;
+
+                  msg += `\nEst. AmountIn: \`${parseFloat(
+                    utils.formatUnits(amountIn, targetFromToken.decimals)
+                  ).toString()} ${targetFromToken.symbol}\``;
+                  msg += `\nAmountIn: \`${parseFloat(
+                    parseFloat(
+                      utils.formatUnits(amountIn, targetFromToken.decimals)
+                    ).toFixed(6)
+                  )} ${targetFromToken.symbol}\``;
+                  msg += `\nBuy Status: ${
+                    buyErrorMsg
+                      ?.replaceAll('(', '\\(')
+                      .replaceAll(')', '\\)') || '✔️'
+                  }`;
+                  msg += buyHash
+                    ? `\nBuy Hash: ${`[${buyHash.toUpperCase()}](${
+                        config.EXPLORER_URL
+                      }/tx/${buyHash})`}`
+                    : '';
+
+                  msg += `\nGas Price: \`${parseFloat(
+                    parseFloat(
+                      utils.formatUnits(
+                        targetGasPriceInWei.add(
+                          utils.parseUnits(
+                            config.ADDITIONAL_BUY_GAS.toString(),
+                            'gwei'
+                          )
+                        ),
+                        'gwei'
+                      )
+                    ).toFixed(6)
+                  ).toString()} Gwei\``;
+
+                  msg += `\n- - -`;
+
+                  msg += `\n**TARGET TRADE**\n---`;
+                  msg += `\nFrom: \`${targetFrom.toUpperCase()}\``;
+                  msg += `\nTarget Hash: [${targetHash.toUpperCase()}](${
+                    config.EXPLORER_URL
+                  }/tx/${targetHash})`;
+                  msg += `\nTarget AmountIn: \`${parseFloat(
+                    targetAmount.toFixed(6)
+                  )} ${targetFromToken.symbol}\``;
+                  msg += `\nTarget Slippage: \`${(targetSlippage * 100).toFixed(
+                    4
+                  )}%\``;
+
+                  msg += `\nTarget Gas Price: \`${targetGasPriceInGwei}\``;
+
+                  msg += `\n- - -`;
+
+                  msg += `\n**SELL TRADE**\n---`;
+                  msg += `\nSell Status: ${
+                    sellErrorMsg
+                      ?.replaceAll('(', '\\(')
+                      .replaceAll(')', '\\)') || '✔️'
+                  }`;
+                  msg += sellHash
+                    ? `\nSell Hash: ${`[${sellHash.toUpperCase()}](${
+                        config.EXPLORER_URL
+                      }/tx/${sellHash})`}`
+                    : '';
+
+                  msg += `\n---`;
+
+                  msg += `\nExecution Price: \`${parseFloat(
+                    parseFloat(
+                      utils.formatUnits(executionPrice, targetToToken.decimals)
+                    ).toFixed(6)
+                  )} ${targetToToken.symbol}\``;
+
+                  msg += `\nEst. Profit in ${
+                    targetFromToken.symbol
+                  }: \`${parseFloat(
+                    parseFloat(
+                      utils.formatUnits(
+                        profitInTargetFromToken,
+                        targetFromToken.decimals
+                      )
+                    ).toFixed(6)
+                  )}\``;
+                  msg += `\nEst. Profit in ${
+                    targetToToken.symbol
+                  }: \`${parseFloat(
+                    parseFloat(
+                      utils.formatUnits(
+                        profitInTargetToToken,
+                        targetToToken.decimals
+                      )
+                    ).toFixed(6)
+                  )}\``;
+                  msg += `\n---`;
+
+                  sendMessage(msg);
+
+                  await sleep(9000);
+                  this._broadcastedTx = false;
+                }
+              } else {
+                console.info(`Skipping: Tx ${targetHash} already broadcasted`);
               }
-            } else {
-              console.info(`Skipping: Tx ${targetHash} already broadcasted`);
+              console.log(`- - - `.repeat(10));
             }
-            console.log(`- - - `.repeat(10));
           }
+        } catch (error) {
+          let msg = this.recoverError(error);
+          console.error({ msg, path });
+          await sleep(6000);
+          this._broadcastedTx = false;
         }
-      } catch (error) {
-        let msg = this.recoverError(error);
-        console.error({ msg });
-        await sleep(6000);
-        this._broadcastedTx = false;
       }
+    } catch (error) {
+      console.error(error);
     }
   };
 
