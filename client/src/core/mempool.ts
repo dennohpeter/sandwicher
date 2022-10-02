@@ -261,11 +261,11 @@ class Mempool {
 
             // let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
 
-            let impact = await this.priceImpact({
-              router,
-              path,
-              amountIn: targetAmountInWei,
-            });
+            // let impact = await this.priceImpact({
+            //   router,
+            //   path,
+            //   amountIn: targetAmountInWei,
+            // });
 
             // 1. let amountIn = targetAmountInWei
             //   .mul((targetSlippage * 10_000).toFixed(0))
