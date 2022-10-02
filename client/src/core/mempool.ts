@@ -284,6 +284,12 @@ class Mempool {
               router
             );
 
+            // let k = reserveBNB.mul(reserveToken);
+            // let amountIn = await this.getAmountIn(
+            //   targetAmountInWei,
+            //   targetAmountOutMin,
+            //   k
+            // );
             let amountIn = await this.calcOptimalAmountIn({
               router,
               path,
@@ -295,26 +301,26 @@ class Mempool {
               targetMinRecvToken: targetAmountOutMin,
             });
 
-            const sandwichStates = calcSandwichStates(
-              amountIn,
-              targetAmountOutMin,
-              reserveBNB,
-              reserveToken,
-              amountIn
-            );
+            // const sandwichStates = calcSandwichStates(
+            //   amountIn,
+            //   targetAmountOutMin,
+            //   reserveBNB,
+            //   reserveToken,
+            //   amountIn
+            // );
 
-            if (sandwichStates === null) {
-              console.log('Victim receives less than minimum amount');
-              return;
-            }
+            // if (sandwichStates === null) {
+            //   console.log('Victim receives less than minimum amount');
+            //   return;
+            // }
 
-            /* First profitability check */
-            const rawProfits =
-              sandwichStates.backrunState.amountOut.sub(amountIn);
-            console.log(
-              'Profits before gas costs: ',
-              utils.formatEther(rawProfits).toString()
-            );
+            // /* First profitability check */
+            // const rawProfits =
+            //   sandwichStates.backrunState.amountOut.sub(amountIn);
+            // console.log(
+            //   'Profits before gas costs: ',
+            //   utils.formatEther(rawProfits).toString()
+            // );
 
             // if (rawProfits < 0) {
             // console.log("Not profitable to sandwich before transaction costs");
@@ -949,6 +955,25 @@ class Mempool {
 
     return priceImpact;
   };
+
+  // private getAmountIn = async (
+  //   amountIn: BigNumber,
+  //   amountOut: BigNumber,
+  //   k: BigNumber,
+  //   fee = BigNumber.from(9975)
+  // ) => {
+  //   let negb = fee.mul(amountIn).mul(-1);
+
+  //   let fourac = BigNumber.from(40000)
+  //     .mul(fee)
+  //     .mul(amountIn)
+  //     .mul(k)
+  //     .div(amountOut);
+
+  //   let squareroot = Math.sqrt(fee.mul(amountIn).pow(2).add(fourac).toNumber());
+  //   let worstRIn = negb.add(squareroot).div(20000);
+  //   return worstRIn, k / worstRIn;
+  // };
 
   /**
    * @note: that target is going from WBNB -> token
