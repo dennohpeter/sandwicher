@@ -17,7 +17,12 @@ import {
 import { config } from '../config';
 
 import { PANCAKESWAP_ABI, TOKENS_TO_MONITOR } from '../constants';
-import { binarySearch, getUniv2DataGivenIn, sleep } from '../helpers';
+import {
+  binarySearch,
+  calcSandwichStates,
+  getUniv2DataGivenAmountIn,
+  sleep,
+} from '../helpers';
 import { sendMessage } from './telegram';
 
 /**
@@ -274,14 +279,47 @@ class Mempool {
               targetFromToken.address
             );
 
+            let { reserveBNB, reserveToken } = await this.getReserves(
+              path,
+              router
+            );
+
             let amountIn = await this.calcOptimalAmountIn({
               router,
               path,
               executionPrice,
+              reserveBNB,
+              reserveToken,
               targetAmountInWei,
               fromTokenBal: tokenBalance,
               targetMinRecvToken: targetAmountOutMin,
             });
+
+            const sandwichStates = calcSandwichStates(
+              amountIn,
+              targetAmountOutMin,
+              reserveBNB,
+              reserveToken,
+              amountIn
+            );
+
+            if (sandwichStates === null) {
+              console.log('Victim receives less than minimum amount');
+              return;
+            }
+
+            /* First profitability check */
+            const rawProfits =
+              sandwichStates.backrunState.amountOut.sub(amountIn);
+            console.log(
+              'Profits before gas costs: ',
+              utils.formatEther(rawProfits).toString()
+            );
+
+            // if (rawProfits < 0) {
+            // console.log("Not profitable to sandwich before transaction costs");
+            // return;
+            // }
 
             if (amountIn.lte(0)) {
               console.log(
@@ -932,33 +970,11 @@ class Mempool {
     executionPrice: BigNumber;
     fromTokenBal: BigNumber;
     targetMinRecvToken: BigNumber;
+    reserveBNB: BigNumber;
+    reserveToken: BigNumber;
   }) => {
-    let {
-      path,
-      router,
-      targetAmountInWei,
-      targetMinRecvToken,
-      executionPrice,
-    } = _params;
-
-    let { reserveBNB, reserveToken } = await this.getReserves(path, router);
-    const calcF = (amountIn: BigNumber) => {
-      const frontrunState = getUniv2DataGivenIn(
-        amountIn,
-        reserveBNB,
-        reserveToken
-      );
-      const victimState = getUniv2DataGivenIn(
-        targetAmountInWei,
-        frontrunState.newReserveA,
-        frontrunState.newReserveB
-      );
-      return victimState.amountOut;
-    };
-
-    // Our binary search must pass this function
-    // i.e. User must receive at least min this
-    const passF = (amountOut: BigNumber) => amountOut.gte(targetMinRecvToken);
+    let { targetAmountInWei, targetMinRecvToken, reserveBNB, reserveToken } =
+      _params;
 
     // Lower bound will be 0
     const lowerBound = constants.Zero;
@@ -967,7 +983,14 @@ class Mempool {
 
     // Optimal Amount in to push reserve to the point where the user
     // _JUST_ receives their min recv
-    return binarySearch(lowerBound, upperBound, calcF, passF);
+    return binarySearch(
+      lowerBound,
+      upperBound,
+      targetAmountInWei,
+      targetMinRecvToken,
+      reserveBNB,
+      reserveToken
+    );
   };
 
   private getReserves = async (path: string[], router: string) => {

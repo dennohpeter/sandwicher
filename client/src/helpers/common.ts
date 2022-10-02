@@ -10,35 +10,50 @@ export const sleep = async (ms: number) =>
   Using binary search here as the profit function isn't normally distributed
 */
 const BN_18 = utils.parseUnits('1');
+const tolerance = utils.parseUnits('0.01'); // Tolerable delta (in %, in 18 dec, i.e. parseUnits('0.01') means left and right delta can be 1%)
 
 export const binarySearch = (
   left: BigNumber, // Lower bound
-  right: BigNumber, // Upper bound
-  calculateF: (val: BigNumber) => BigNumber, // Generic calculate function
-  passConditionF: (val: BigNumber) => boolean, // Condition checker
-  tolerance = utils.parseUnits('0.01') // Tolerable delta (in %, in 18 dec, i.e. parseUnits('0.01') means left and right delta can be 1%)
+  right: BigNumber, // Upper bound,
+  amountIn: BigNumber,
+  amountOutMin: BigNumber,
+  reserveBNB: BigNumber,
+  reserveToken: BigNumber
 ): BigNumber => {
-  if (right.sub(left).gt(tolerance.mul(right.add(left).div(2)).div(BN_18))) {
-    const mid = right.add(left).div(2);
-    const out = calculateF(mid);
-
-    // If we pass the condition
-    // Number go up
-    if (passConditionF(out)) {
-      return binarySearch(mid, right, calculateF, passConditionF, tolerance);
-    }
-
-    // Number go down
-    return binarySearch(left, mid, calculateF, passConditionF, tolerance);
+  let mid = right.add(left).div(2);
+  if (right.sub(left).lte(tolerance.mul(mid).div(BN_18))) {
+    return mid;
   }
-
-  // No negatives
-  const ret = right.add(left).div(2);
-  if (ret.lt(0)) {
-    return constants.Zero;
+  const frontRunState = getUniv2DataGivenAmountIn(
+    mid,
+    reserveBNB,
+    reserveToken
+  );
+  const victimState = getUniv2DataGivenAmountIn(
+    amountIn,
+    frontRunState.newReserveA,
+    frontRunState.newReserveB
+  );
+  const victimAmountOut = victimState.amountOut;
+  if (victimAmountOut.gte(amountOutMin)) {
+    return binarySearch(
+      mid,
+      right,
+      amountIn,
+      amountOutMin,
+      reserveBNB,
+      reserveToken
+    );
+  } else {
+    return binarySearch(
+      left,
+      mid,
+      amountIn,
+      amountOutMin,
+      reserveBNB,
+      reserveToken
+    );
   }
-
-  return ret;
 };
 
 /*
@@ -46,31 +61,59 @@ export const binarySearch = (
 
  How much out do we get if we supply in?
 */
-export const getUniv2DataGivenIn = (
-  aIn: BigNumber,
+export const getUniv2DataGivenAmountIn = (
+  amountIn: BigNumber,
   reserveA: BigNumber,
   reserveB: BigNumber
 ) => {
-  const aInWithFee = aIn.mul(9975);
-  const numerator = aInWithFee.mul(reserveB);
-  const denominator = aInWithFee.add(reserveA.mul(10000));
-  const bOut = numerator.div(denominator);
+  const amountInWithFee = amountIn.mul(9975); // ~0.3% swap fee
+  const numerator = amountInWithFee.mul(reserveB);
+  const denominator = amountInWithFee.add(reserveA.mul(10000));
+  const amountOut = numerator.div(denominator);
 
-  // Underflow
-  let newReserveB = reserveB.sub(bOut);
-  if (newReserveB.lt(0) || newReserveB.gt(reserveB)) {
-    newReserveB = BigNumber.from(1);
-  }
+  const newReserveA = reserveA.add(amountIn);
+  const newReserveB = reserveB.sub(amountOut);
 
-  // Overflow
-  let newReserveA = reserveA.add(aIn);
-  if (newReserveA.lt(reserveA)) {
-    newReserveA = constants.MaxInt256;
+  return {
+    amountOut,
+    newReserveA,
+    newReserveB,
+  };
+};
+
+export const calcSandwichStates = (
+  amountIn: BigNumber,
+  amountOutMin: BigNumber,
+  reserveWETH: BigNumber,
+  reserveToken: BigNumber,
+  optimalSandwichAmount: BigNumber
+) => {
+  const frontrunState = getUniv2DataGivenAmountIn(
+    optimalSandwichAmount,
+    reserveWETH,
+    reserveToken
+  );
+  const victimState = getUniv2DataGivenAmountIn(
+    amountIn,
+    frontrunState.newReserveA,
+    frontrunState.newReserveB
+  );
+  const backrunState = getUniv2DataGivenAmountIn(
+    frontrunState.amountOut,
+    victimState.newReserveB,
+    victimState.newReserveA
+  );
+
+  if (victimState.amountOut.lt(amountOutMin)) {
+    return null;
   }
 
   return {
-    amountOut: bOut,
-    newReserveA,
-    newReserveB,
+    optimalSandwichAmount,
+    amountIn,
+    amountOutMin,
+    frontrunState,
+    victimState,
+    backrunState,
   };
 };
