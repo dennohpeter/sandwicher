@@ -300,7 +300,13 @@ class Mempool {
                 } token balance ${utils.formatUnits(
                   tokenBalance,
                   targetFromToken.decimals
-                )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`
+                )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
+                {
+                  targetAmountInWei: utils.formatUnits(
+                    targetAmountInWei,
+                    targetFromToken.decimals
+                  ),
+                }
               );
               return;
             }
