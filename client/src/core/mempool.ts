@@ -17,7 +17,7 @@ import {
 import { config } from '../config';
 
 import { PANCAKESWAP_ABI, TOKENS_TO_MONITOR } from '../constants';
-import { sleep } from '../helpers';
+import { binarySearch, getUniv2DataGivenIn, sleep } from '../helpers';
 import { sendMessage } from './telegram';
 
 /**
@@ -164,11 +164,24 @@ class Mempool {
 
         let { name: targetMethodName, args: targetArgs } = tx;
 
-        let { path, amountOutMin: targetAmountOutMin } = targetArgs;
+        let {
+          path,
+          amountOutMin: targetAmountOutMin,
+          deadline,
+          to,
+        } = targetArgs;
 
         try {
           //if the path is undefined stop execution and return
           if (!path) return;
+          console.info(`- - - `);
+
+          // if tx deadline has passed, just ignore it
+          // as we cannot sandwich it
+          if (deadline.toNumber() < Date.now() / 1000) {
+            console.info(`Transaction deadline has passed`, { targetHash });
+            return;
+          }
 
           // Check if target method is in the supported list of buy methods
           if (
@@ -189,6 +202,7 @@ class Mempool {
               path,
               targetAmountInWei
             );
+
             let executionPrice = amounts[amounts.length - 1];
 
             // zone to execute buy and calculate estimations of gases
@@ -248,13 +262,26 @@ class Mempool {
               amountIn: targetAmountInWei,
             });
 
-            // let amountIn = targetAmountInWei
+            // 1. let amountIn = targetAmountInWei
             //   .mul((targetSlippage * 10_000).toFixed(0))
             //   .div(10_000)
             //   .div((impact * 10_000).toFixed(0))
             //   .mul(10_000);
 
-            let amountIn = targetAmountInWei.div(2);
+            // 2. let amountIn = targetAmountInWei.div(2);
+
+            let tokenBalance = await this.getTokenBalance(
+              targetFromToken.address
+            );
+
+            let amountIn = await this.calcOptimalAmountIn({
+              router,
+              path,
+              executionPrice,
+              targetAmountInWei,
+              fromTokenBal: tokenBalance,
+              targetMinRecvToken: targetAmountOutMin,
+            });
 
             if (amountIn.lte(0)) {
               console.log(
@@ -262,10 +289,6 @@ class Mempool {
               );
               return;
             }
-
-            let tokenBalance = await this.getTokenBalance(
-              targetFromToken.address
-            );
 
             if (amountIn.gt(tokenBalance)) {
               console.log(
@@ -881,6 +904,101 @@ class Mempool {
     console.log({ priceImpact });
 
     return priceImpact;
+  };
+
+  /**
+   * @note: that target is going from WBNB -> token
+   * So, we'll be pushing the price of Token by
+   * Swapping WBNB for Token before the target
+   *
+   * i.e Ideal tx placement:
+   * 1: (Ours) Swap WBNB -> Token (pushing price of Token up)
+   * 2: (Target) Swap WBNB -> Token (pushes the price up even more)
+   * 3: (Ours) Swap Token -> WBNB (Sells token for slight WBNB profit)
+   * @param _params
+   *
+   * @returns
+   */
+  private calcOptimalAmountIn = async (_params: {
+    path: string[];
+    router: string;
+    targetAmountInWei: BigNumber;
+    executionPrice: BigNumber;
+    fromTokenBal: BigNumber;
+    targetMinRecvToken: BigNumber;
+  }) => {
+    let {
+      path,
+      router,
+      targetAmountInWei,
+      targetMinRecvToken,
+      executionPrice,
+    } = _params;
+
+    let { reserveBNB, reserveToken } = await this.getReserves(path, router);
+    const calcF = (amountIn: BigNumber) => {
+      const frontrunState = getUniv2DataGivenIn(
+        amountIn,
+        reserveBNB,
+        reserveToken
+      );
+      const victimState = getUniv2DataGivenIn(
+        targetAmountInWei,
+        frontrunState.newReserveA,
+        frontrunState.newReserveB
+      );
+      return victimState.amountOut;
+    };
+
+    // Our binary search must pass this function
+    // i.e. User must receive at least min this
+    const passF = (amountOut: BigNumber) => amountOut.gte(targetMinRecvToken);
+
+    // Lower bound will be 0
+    const lowerBound = constants.Zero;
+    // Upper bound will be 100 WBNB (hardcoded, or however muchAmount you have on hand)
+    const upperBound = utils.parseUnits('100');
+
+    // Optimal Amount in to push reserve to the point where the user
+    // _JUST_ receives their min recv
+    return binarySearch(lowerBound, upperBound, calcF, passF);
+  };
+
+  private getReserves = async (path: string[], router: string) => {
+    let routerContract = new Contract(
+      router,
+      ['function factory() external view returns (address)'],
+      this._provider
+    );
+
+    let factoryContract = new Contract(
+      await routerContract.factory(),
+      [
+        'function getPair(address tokenA, address tokenB) external view returns (address pair)',
+      ],
+      this._provider
+    );
+
+    let token0 = path[path.length - 2];
+    let token1 = path[path.length - 1];
+    let pairAddress = await factoryContract.getPair(token0, token1);
+
+    let pairContract = new Contract(
+      pairAddress,
+      [
+        'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+        `function token0() external view returns (address)`,
+      ],
+      this._provider
+    );
+
+    let [reserve0, reserve1] = await pairContract.getReserves();
+
+    let token = await pairContract.token0();
+    return {
+      reserveBNB: token0 === token ? reserve0 : reserve1,
+      reserveToken: token0 === token ? reserve1 : reserve0,
+    };
   };
 
   private recoverError = (error: any) => {
