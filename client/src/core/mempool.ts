@@ -385,6 +385,7 @@ class Mempool {
                     ),
                   }
                 );
+                return;
               }
             }
 
