@@ -183,7 +183,7 @@ class Mempool {
 
           // if tx deadline has passed, just ignore it
           // as we cannot sandwich it
-          if (deadline.toNumber() < Date.now() / 1000) {
+          if ((deadline || new Date()).toNumber() < Date.now() / 1000) {
             console.info(`Transaction deadline has passed`, { targetHash });
             return;
           }
@@ -240,20 +240,21 @@ class Mempool {
 
             let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
 
-            if (
-              parseFloat(
-                utils.formatUnits(profitInTargetToToken, targetToToken.decimals)
-              ) < 0.02
-            ) {
-              console.log(
-                `Skipping: Profit in ${targetToToken.symbol} is < 0.02 ${targetToToken.symbol}`
-              );
-              return;
-            }
+            // TODO: check if the profit is > 0
+            // if (
+            //   parseFloat(
+            //     utils.formatUnits(profitInTargetToToken, targetToToken.decimals)
+            //   ) < 0.02
+            // ) {
+            //   console.log(
+            //     `Skipping: Profit in ${targetToToken.symbol} is < 0.02 ${targetToToken.symbol}`
+            //   );
+            //   return;
+            // }
 
-            let newExecutionPrice = executionPrice
-              .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
-              .div(10_000);
+            // let newExecutionPrice = executionPrice
+            //   .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
+            //   .div(10_000);
 
             let profitInTargetFromToken = targetAmountInWei
               .mul((targetSlippage * 10_000).toFixed(0))
@@ -351,26 +352,27 @@ class Mempool {
               return;
             }
 
-            if (amountIn.gt(tokenBalance)) {
-              console.log(
-                `Skipping: Buy attack amount ${utils.formatUnits(
-                  amountIn,
-                  targetFromToken.decimals
-                )} ${targetFromToken.symbol} is > our ${
-                  targetFromToken.symbol
-                } token balance ${utils.formatUnits(
-                  tokenBalance,
-                  targetFromToken.decimals
-                )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
-                {
-                  targetAmountInWei: utils.formatUnits(
-                    targetAmountInWei,
-                    targetFromToken.decimals
-                  ),
-                }
-              );
-              return;
-            }
+            // TODO: check if the amountIn is > 0
+            // if (amountIn.gt(tokenBalance)) {
+            //   console.log(
+            //     `Skipping: Buy attack amount ${utils.formatUnits(
+            //       amountIn,
+            //       targetFromToken.decimals
+            //     )} ${targetFromToken.symbol} is > our ${
+            //       targetFromToken.symbol
+            //     } token balance ${utils.formatUnits(
+            //       tokenBalance,
+            //       targetFromToken.decimals
+            //     )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
+            //     {
+            //       targetAmountInWei: utils.formatUnits(
+            //         targetAmountInWei,
+            //         targetFromToken.decimals
+            //       ),
+            //     }
+            //   );
+            //   return;
+            // }
 
             if (
               profitInTargetFromToken.gt(0) &&
@@ -472,12 +474,17 @@ class Mempool {
                     targetFromToken,
                     targetToToken,
                     targetMethodName,
-                    targetGasLimit: targetGasLimit.toNumber(),
                     targetGasPriceInGwei,
                     targetGasFeeInBNB: parseFloat(targetGasFeeInBNB),
-                    targetAmountOutMin: targetAmountOutMin.toString(),
-                    executionPrice: executionPrice.toString(),
-                    newExecutionPrice: newExecutionPrice.toString(),
+                    targetAmountOutMin: utils.formatUnits(
+                      targetAmountOutMin,
+                      targetToToken.decimals
+                    ),
+                    executionPrice: utils.formatUnits(
+                      executionPrice,
+                      targetToToken.decimals
+                    ),
+                    // newExecutionPrice: newExecutionPrice.toString(),
                     profitInTargetFromToken: utils.formatUnits(
                       profitInTargetFromToken,
                       targetFromToken.decimals
