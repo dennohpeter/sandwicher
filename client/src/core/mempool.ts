@@ -256,10 +256,16 @@ class Mempool {
             //   .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
             //   .div(10_000);
 
+            console.log({
+              'check 1': targetSlippage.toFixed(4),
+            });
             let profitInTargetFromToken = targetAmountInWei
               .mul((targetSlippage * 10_000).toFixed(0))
               .div(10_000);
 
+            console.log({
+              'check 2': profitInTargetFromToken,
+            });
             // let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
 
             // 2. let amountIn = targetAmountInWei.div(2);
@@ -276,6 +282,9 @@ class Mempool {
             let amount = parseFloat(
               utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
             );
+            console.log({
+              'check 3': amount,
+            });
             let amountOut = parseFloat(
               utils.formatUnits(targetAmountOutMin, targetToToken.decimals)
             );
