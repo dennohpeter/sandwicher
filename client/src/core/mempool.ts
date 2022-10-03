@@ -235,6 +235,10 @@ class Mempool {
                 `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
                   4
                 )} is < ${config.MIN_SLIPPAGE_THRESHOLD}%`
+                {
+                  targetToToken,
+                  amountIn:  utils.formatUnits(targetAmountInWei, targetToToken.decimals)
+                }
               );
               return;
             }
@@ -300,7 +304,13 @@ class Mempool {
 
             if (amountOut == 0) {
               console.log(`Skipping: amountOut is 0`);
-              return;
+              amountOut = parseFloat(
+                utils.formatUnits(
+                  executionPrice.mul(8000).div(10_000),
+                  targetToToken.decimals
+                )
+              );
+              // return;
             }
 
             let k = reserve0 * reserve1;
