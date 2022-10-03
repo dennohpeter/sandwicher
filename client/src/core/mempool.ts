@@ -287,8 +287,8 @@ class Mempool {
                 targetAmountInWei,
                 targetFromToken.decimals
               ),
-              token: targetFromToken.symbol,
-              address: targetFromToken.address,
+              token: targetToToken.symbol,
+              address: targetToToken.address,
             });
             let amountIn = constants.Zero;
             // let k = reserveBNB.mul(reserveToken);
