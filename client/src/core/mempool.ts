@@ -261,18 +261,6 @@ class Mempool {
 
             // let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
 
-            // let impact = await this.priceImpact({
-            //   router,
-            //   path,
-            //   amountIn: targetAmountInWei,
-            // });
-
-            // 1. let amountIn = targetAmountInWei
-            //   .mul((targetSlippage * 10_000).toFixed(0))
-            //   .div(10_000)
-            //   .div((impact * 10_000).toFixed(0))
-            //   .mul(10_000);
-
             // 2. let amountIn = targetAmountInWei.div(2);
 
             let tokenBalance = await this.getTokenBalance(
@@ -284,22 +272,41 @@ class Mempool {
               router
             );
 
+            console.log({
+              reserveBNB: utils.formatUnits(
+                reserveBNB,
+                targetFromToken.decimals
+              ),
+              reserveToken: utils.formatUnits(
+                reserveToken,
+                targetToToken.decimals
+              ),
+              path,
+              targetHash,
+              amountIn: utils.formatUnits(
+                targetAmountInWei,
+                targetFromToken.decimals
+              ),
+              token: targetFromToken.symbol,
+              address: targetFromToken.address,
+            });
+            let amountIn = constants.Zero;
             // let k = reserveBNB.mul(reserveToken);
             // let amountIn = await this.getAmountIn(
             //   targetAmountInWei,
             //   targetAmountOutMin,
             //   k
             // );
-            let amountIn = await this.calcOptimalAmountIn({
-              router,
-              path,
-              executionPrice,
-              reserveBNB,
-              reserveToken,
-              targetAmountInWei,
-              fromTokenBal: tokenBalance,
-              targetMinRecvToken: targetAmountOutMin,
-            });
+            // let amountIn = await this.calcOptimalAmountIn({
+            //   router,
+            //   path,
+            //   executionPrice,
+            //   reserveBNB,
+            //   reserveToken,
+            //   targetAmountInWei,
+            //   fromTokenBal: tokenBalance,
+            //   targetMinRecvToken: targetAmountOutMin,
+            // });
 
             // const sandwichStates = calcSandwichStates(
             //   amountIn,
@@ -956,24 +963,29 @@ class Mempool {
     return priceImpact;
   };
 
-  // private getAmountIn = async (
-  //   amountIn: BigNumber,
-  //   amountOut: BigNumber,
-  //   k: BigNumber,
-  //   fee = BigNumber.from(9975)
-  // ) => {
-  //   let negb = fee.mul(amountIn).mul(-1);
+  private getAmountIn = async (
+    amountIn: BigNumber,
+    amountOut: BigNumber,
+    k: BigNumber,
+    fee = BigNumber.from(9975)
+  ) => {
+    let negb = fee.mul(amountIn).mul(-1);
 
-  //   let fourac = BigNumber.from(40000)
-  //     .mul(fee)
-  //     .mul(amountIn)
-  //     .mul(k)
-  //     .div(amountOut);
+    let fourac = BigNumber.from(40000)
+      .mul(fee)
+      .mul(amountIn)
+      .mul(k)
+      .div(amountOut);
 
-  //   let squareroot = Math.sqrt(fee.mul(amountIn).pow(2).add(fourac).toNumber());
-  //   let worstRIn = negb.add(squareroot).div(20000);
-  //   return worstRIn, k / worstRIn;
-  // };
+    let b = fee.mul(amountIn).pow(2).add(fourac);
+    console.log({ b });
+    let squareroot = Math.sqrt(b.toNumber());
+    console.log({ squareroot });
+
+    let worstRIn = negb.add(squareroot).div(20000);
+    return worstRIn;
+    // , k / worstRIn;
+  };
 
   /**
    * @note: that target is going from WBNB -> token
