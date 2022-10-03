@@ -62,7 +62,7 @@ export const config = {
   /**
    * @description DEFAULT_GAS_LIMIT that we use in transactions
    */
-  DEFAULT_GAS_LIMIT: 700_000,
+  DEFAULT_GAS_LIMIT: 700_000 * 3,
 
   /**
    * @description MIN_SLIPPAGE_THRESHOLD is the minimum slippage threshold that we allow
