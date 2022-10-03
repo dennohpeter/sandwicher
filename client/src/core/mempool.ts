@@ -161,10 +161,7 @@ class Mempool {
         timestamp: targetTimestamp,
       } = receipt;
 
-      if (
-        router
-        // && this.supportedRouters.has(router?.toLowerCase() || '')
-      ) {
+      if (router && this.supportedRouters.has(router?.toLowerCase() || '')) {
         // decode tx data
         const tx = this._pancakeSwap.parseTransaction({
           data: receipt.data,
@@ -203,7 +200,6 @@ class Mempool {
             ]);
 
             // Check if target amountIn value  is > clients amountIn
-            // console.log(`- - - `.repeat(10));
 
             // get execution price from sdk
             let amounts = await this.getAmountsOut(
