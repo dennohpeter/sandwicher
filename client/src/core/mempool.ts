@@ -272,35 +272,41 @@ class Mempool {
               router
             );
 
+            let amount = parseFloat(
+              utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
+            );
+            let amountOut = parseFloat(
+              utils.formatUnits(targetAmountOutMin, targetToToken.decimals)
+            );
+            let reserve0 = parseFloat(
+              utils.formatUnits(reserveBNB, targetFromToken.decimals)
+            );
+            let reserve1 = parseFloat(
+              utils.formatUnits(reserveToken, targetToToken.decimals)
+            );
             console.log({
-              reserveBNB: utils.formatUnits(
-                reserveBNB,
-                targetFromToken.decimals
-              ),
-              reserveToken: utils.formatUnits(
-                reserveToken,
-                targetToToken.decimals
-              ),
               path,
               targetHash,
-              amountIn: utils.formatUnits(
-                targetAmountInWei,
-                targetFromToken.decimals
-              ),
+              amountIn: amount,
               token: targetToToken.symbol,
               address: targetToToken.address,
-              amountOut: utils.formatUnits(
-                targetAmountOutMin,
-                targetToToken.decimals
-              ),
+              amountOut,
+              reserverBNB: reserve0,
+              reserveToken: reserve1,
             });
-            let amountIn = constants.Zero;
-            // let k = reserveBNB.mul(reserveToken);
-            // let amountIn = await this.getAmountIn(
-            //   targetAmountInWei,
-            //   targetAmountOutMin,
-            //   k
-            // );
+
+            if (amountOut == 0) {
+              console.log(`Skipping: amountOut is 0`);
+              return;
+            }
+
+            let k = reserve0 * reserve1;
+            let amountIn = utils.parseUnits(
+              Math.abs(
+                this.getAmountIn(amount, amountOut, k) - reserve0
+              ).toString(),
+              targetFromToken.decimals
+            );
             // let amountIn = await this.calcOptimalAmountIn({
             //   router,
             //   path,
@@ -967,27 +973,23 @@ class Mempool {
     return priceImpact;
   };
 
-  private getAmountIn = async (
-    amountIn: BigNumber,
-    amountOut: BigNumber,
-    k: BigNumber,
-    fee = BigNumber.from(9975)
+  private getAmountIn = (
+    amountIn: number,
+    amountOut: number,
+    k: number,
+    fee = 9975
   ) => {
-    let negb = fee.mul(amountIn).mul(-1);
+    let negb = fee * amountIn * -1;
 
-    let fourac = BigNumber.from(40000)
-      .mul(fee)
-      .mul(amountIn)
-      .mul(k)
-      .div(amountOut);
+    let fourac = (40000 * fee * amountIn * k) / amountOut;
 
-    let b = fee.mul(amountIn).pow(2).add(fourac);
+    let b = (fee * amountIn) ** 2 + fourac;
     console.log({ b });
-    let squareroot = Math.sqrt(b.toNumber());
+    let squareroot = Math.sqrt(b);
     console.log({ squareroot });
 
-    let worstRIn = negb.add(squareroot).div(20000);
-    return worstRIn;
+    let worstRIn = negb + squareroot / 20000;
+    return worstRIn - amountIn;
     // , k / worstRIn;
   };
 
