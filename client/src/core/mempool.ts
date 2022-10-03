@@ -988,8 +988,10 @@ class Mempool {
     let squareroot = Math.sqrt(b);
     console.log({ squareroot });
 
-    let worstRIn = negb + squareroot / 20000;
-    return worstRIn - amountIn;
+    let worstRIn = (negb + squareroot) / 20000;
+    console.log({ worstRIn });
+
+    return worstRIn;
     // , k / worstRIn;
   };
 
