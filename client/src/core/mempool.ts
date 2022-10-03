@@ -363,7 +363,7 @@ class Mempool {
 
             // TODO: check if the amountIn is > 0
             if (amountIn.gt(tokenBalance)) {
-              if (amountIn.div(3).lte(tokenBalance)) {
+              if (amountIn.div(5).lte(tokenBalance)) {
                 amountIn = tokenBalance;
               }
 
