@@ -161,7 +161,10 @@ class Mempool {
         timestamp: targetTimestamp,
       } = receipt;
 
-      if (router && this.supportedRouters.has(router?.toLowerCase() || '')) {
+      if (
+        router
+        // && this.supportedRouters.has(router?.toLowerCase() || '')
+      ) {
         // decode tx data
         const tx = this._pancakeSwap.parseTransaction({
           data: receipt.data,
@@ -183,7 +186,8 @@ class Mempool {
 
           // if tx deadline has passed, just ignore it
           // as we cannot sandwich it
-          if (deadline.lte(BigNumber.from(Math.floor(Date.now() / 1000)))) {
+          let now = Math.floor(Date.now() / 1000);
+          if (deadline.lte(BigNumber.from(now))) {
             console.info(`Transaction deadline has passed`, { targetHash });
             return;
           }
@@ -228,8 +232,7 @@ class Mempool {
             }
 
             if (
-              // 0 - 1
-              parseFloat(targetSlippage.toFixed(5)) <
+              targetSlippage <
               config.MIN_SLIPPAGE_THRESHOLD / 100 //~ 1%
             ) {
               console.log(
@@ -247,8 +250,6 @@ class Mempool {
               return;
             }
 
-            let profitInTargetToToken = executionPrice.sub(targetAmountOutMin);
-
             // TODO: check if the profit is > 0
             // if (
             //   parseFloat(
@@ -261,17 +262,9 @@ class Mempool {
             //   return;
             // }
 
-            // let newExecutionPrice = executionPrice
-            //   .mul((targetSlippage * 10_000).toFixed(0) + 10_000)
-            //   .div(10_000);
-
             let profitInTargetFromToken = targetAmountInWei
               .mul((targetSlippage * 10_000).toFixed(0))
               .div(10_000);
-
-            // let buyAttackAmount = targetAmountInWei.sub(profitInTargetFromToken);
-
-            // 2. let amountIn = targetAmountInWei.div(2);
 
             let tokenBalance = await this.getTokenBalance(
               targetFromToken.address
@@ -486,6 +479,9 @@ class Mempool {
                       'gwei'
                     )
                   ).toString()} Gwei`;
+
+                  let profitInTargetToToken =
+                    executionPrice.sub(targetAmountOutMin);
 
                   console.log({
                     router,
