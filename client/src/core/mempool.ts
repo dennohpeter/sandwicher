@@ -201,6 +201,7 @@ class Mempool {
             // Check if target amountIn value  is > clients amountIn
             console.log(`- - - `.repeat(10));
 
+            console.log('amounts Out');
             // get execution price from sdk
             let amounts = await this.getAmountsOut(
               router,
@@ -210,11 +211,21 @@ class Mempool {
 
             let executionPrice = amounts[amounts.length - 1];
 
+            console.log({
+              executionPrice: utils.formatUnits(
+                executionPrice,
+                targetToToken.decimals
+              ),
+            });
             // zone to execute buy and calculate estimations of gases
             let { slippage: targetSlippage } = this.getSlippage({
               executionPrice,
               targetAmountOutMin,
               targetMethodName,
+            });
+
+            console.log({
+              targetSlippage,
             });
 
             if (
