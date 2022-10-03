@@ -289,6 +289,10 @@ class Mempool {
               ),
               token: targetToToken.symbol,
               address: targetToToken.address,
+              amountOut: utils.formatUnits(
+                targetAmountOutMin,
+                targetToToken.decimals
+              ),
             });
             let amountIn = constants.Zero;
             // let k = reserveBNB.mul(reserveToken);
