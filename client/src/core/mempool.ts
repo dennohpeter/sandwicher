@@ -353,26 +353,29 @@ class Mempool {
             }
 
             // TODO: check if the amountIn is > 0
-            // if (amountIn.gt(tokenBalance)) {
-            //   console.log(
-            //     `Skipping: Buy attack amount ${utils.formatUnits(
-            //       amountIn,
-            //       targetFromToken.decimals
-            //     )} ${targetFromToken.symbol} is > our ${
-            //       targetFromToken.symbol
-            //     } token balance ${utils.formatUnits(
-            //       tokenBalance,
-            //       targetFromToken.decimals
-            //     )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
-            //     {
-            //       targetAmountInWei: utils.formatUnits(
-            //         targetAmountInWei,
-            //         targetFromToken.decimals
-            //       ),
-            //     }
-            //   );
-            //   return;
-            // }
+            if (amountIn.gt(tokenBalance)) {
+              console.log(
+                `Skipping: Buy attack amount ${utils.formatUnits(
+                  amountIn,
+                  targetFromToken.decimals
+                )} ${targetFromToken.symbol} is > our ${
+                  targetFromToken.symbol
+                } token balance ${utils.formatUnits(
+                  tokenBalance,
+                  targetFromToken.decimals
+                )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
+                {
+                  targetAmountInWei: utils.formatUnits(
+                    targetAmountInWei,
+                    targetFromToken.decimals
+                  ),
+                }
+              );
+              if (amountIn.div(3).gt(tokenBalance)) {
+                return;
+              }
+              amountIn = tokenBalance;
+            }
 
             if (
               profitInTargetFromToken.gt(0) &&
