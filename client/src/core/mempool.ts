@@ -288,16 +288,16 @@ class Mempool {
             let reserve1 = parseFloat(
               utils.formatUnits(reserveToken, targetToToken.decimals)
             );
-            // console.log({
-            //   path,
-            //   targetHash,
-            //   amountIn: amount,
-            //   token: targetToToken.symbol,
-            //   address: targetToToken.address,
-            //   amountOut,
-            //   reserverBNB: reserve0,
-            //   reserveToken: reserve1,
-            // });
+            console.log({
+              path,
+              targetHash,
+              amountIn: amount,
+              token: targetToToken.symbol,
+              address: targetToToken.address,
+              amountOut,
+              reserverBNB: reserve0,
+              reserveToken: reserve1,
+            });
 
             if (amountOut == 0) {
               console.log(`Skipping: amountOut is 0`);
@@ -368,23 +368,23 @@ class Mempool {
               }
 
               if (amountIn.gt(tokenBalance)) {
-                // console.log(
-                //   `Skipping: Buy attack amount ${utils.formatUnits(
-                //     amountIn,
-                //     targetFromToken.decimals
-                //   )} ${targetFromToken.symbol} is > our ${
-                //     targetFromToken.symbol
-                //   } token balance ${utils.formatUnits(
-                //     tokenBalance,
-                //     targetFromToken.decimals
-                //   )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
-                //   {
-                //     targetAmountInWei: utils.formatUnits(
-                //       targetAmountInWei,
-                //       targetFromToken.decimals
-                //     ),
-                //   }
-                // );
+                console.log(
+                  `Skipping: Buy attack amount ${utils.formatUnits(
+                    amountIn,
+                    targetFromToken.decimals
+                  )} ${targetFromToken.symbol} is > our ${
+                    targetFromToken.symbol
+                  } token balance ${utils.formatUnits(
+                    tokenBalance,
+                    targetFromToken.decimals
+                  )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
+                  {
+                    targetAmountInWei: utils.formatUnits(
+                      targetAmountInWei,
+                      targetFromToken.decimals
+                    ),
+                  }
+                );
                 return;
               }
             }
