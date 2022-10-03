@@ -228,6 +228,7 @@ class Mempool {
             }
 
             if (
+              // 0 - 1
               parseFloat(targetSlippage.toFixed(5)) <
               config.MIN_SLIPPAGE_THRESHOLD / 100 //~ 1%
             ) {

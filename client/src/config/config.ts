@@ -69,7 +69,7 @@ export const config = {
    * @type {number}
    * @default 1%
    */
-  MIN_SLIPPAGE_THRESHOLD: 1,
+  MIN_SLIPPAGE_THRESHOLD: 0.7,
 
   /**
    * @description ADDITIONAL_BUY_GAS that we use in front-running the target
