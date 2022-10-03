@@ -234,10 +234,13 @@ class Mempool {
               console.log(
                 `Skipping: Tx ${targetHash} Target slippage ${targetSlippage.toFixed(
                   4
-                )} is < ${config.MIN_SLIPPAGE_THRESHOLD}%`
+                )} is < ${config.MIN_SLIPPAGE_THRESHOLD}%`,
                 {
                   targetToToken,
-                  amountIn:  utils.formatUnits(targetAmountInWei, targetToToken.decimals)
+                  amountIn: utils.formatUnits(
+                    targetAmountInWei,
+                    targetToToken.decimals
+                  ),
                 }
               );
               return;
