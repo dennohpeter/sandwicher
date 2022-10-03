@@ -183,6 +183,7 @@ class Mempool {
 
           // if tx deadline has passed, just ignore it
           // as we cannot sandwich it
+          console.log(`Checking deadline`, { deadline });
           if ((deadline || new Date()).toNumber() < Date.now() / 1000) {
             console.info(`Transaction deadline has passed`, { targetHash });
             return;
