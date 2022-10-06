@@ -50,6 +50,7 @@ class Mempool {
   >;
 
   private supportedRouters: Map<string, string>;
+  private signer: Wallet;
   private PUBLIC_KEY: string;
 
   constructor() {
@@ -57,11 +58,12 @@ class Mempool {
     this._wsprovider = new providers.WebSocketProvider(config.WSS_URL);
     this._pancakeSwap = new utils.Interface(PANCAKESWAP_ABI);
     this._provider = new providers.JsonRpcProvider(config.JSON_RPC);
+    this.signer = new Wallet(config.PRIVATE_KEY, this._wsprovider);
 
     this.contract = new Contract(
       config.CONTRACT_ADDRESS, //smartcontract address
       [`function buy(bytes) payable`, `function sell(bytes) payable`],
-      new Wallet(config.PRIVATE_KEY, this._wsprovider) //signer
+      this.signer
     );
 
     this._broadcastedTx = false;
@@ -98,7 +100,7 @@ class Mempool {
 
   private setup = async () => {
     // get the public key
-    this.PUBLIC_KEY = await this._provider.getSigner().getAddress();
+    this.PUBLIC_KEY = await this.signer.getAddress();
 
     // setup supported buy methods
     // this.supported_buy_methods.set(
