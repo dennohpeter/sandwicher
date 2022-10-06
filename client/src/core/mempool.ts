@@ -1,8 +1,4 @@
-import {
-  Multicall,
-  ContractCallResults,
-  ContractCallContext,
-} from 'ethereum-multicall';
+import { Multicall, ContractCallContext } from 'ethereum-multicall';
 
 import {
   BigNumber,
@@ -17,12 +13,7 @@ import {
 import { config } from '../config';
 
 import { PANCAKESWAP_ABI, TOKENS_TO_MONITOR } from '../constants';
-import {
-  binarySearch,
-  calcSandwichStates,
-  getUniv2DataGivenAmountIn,
-  sleep,
-} from '../helpers';
+import { binarySearch, sleep } from '../helpers';
 import { sendMessage } from './telegram';
 
 /**
@@ -59,6 +50,7 @@ class Mempool {
   >;
 
   private supportedRouters: Map<string, string>;
+  private PUBLIC_KEY: string;
 
   constructor() {
     // initialize some variables i.e provider, signers, interface
@@ -78,6 +70,8 @@ class Mempool {
     this.supported_buy_tokens = new Map();
     this.tokensToMonitor = new Map();
     this.supportedRouters = new Map();
+
+    this.PUBLIC_KEY = '';
   }
 
   /**
@@ -103,6 +97,9 @@ class Mempool {
   };
 
   private setup = async () => {
+    // get the public key
+    this.PUBLIC_KEY = await this._provider.getSigner().getAddress();
+
     // setup supported buy methods
     // this.supported_buy_methods.set(
     //   'swapETHForExactTokens',

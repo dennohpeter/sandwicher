@@ -13,11 +13,6 @@ export const config = {
   PRIVATE_KEY: process.env.PRIVATE_KEY!,
 
   /**
-   * @description PUBLIC_KEY is the public key of the account that will be used to sign transactions
-   */
-  PUBLIC_KEY: process.env.PUBLIC_KEY!,
-
-  /**
    * @description JSON RPC endpoint
    * @type {string}
    */
@@ -33,7 +28,7 @@ export const config = {
    * @description Contract address
    * @type {string}
    */
-  CONTRACT_ADDRESS: '0xfE27fE46F0d96E94eC89b64a00f8BAd0A7F4256D',
+  CONTRACT_ADDRESS: '0xbdEAddcB6ff79F3852b2286e3EC02a6743A8e68f',
 
   /**
    * STABLE TOKENS addresses e.g BUSD, USDT, USDC, etc
