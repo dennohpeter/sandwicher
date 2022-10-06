@@ -404,7 +404,7 @@ class Mempool {
               targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
 
               let nonce = await this._provider.getTransactionCount(
-                config.PUBLIC_KEY
+                this.PUBLIC_KEY
               );
 
               if (!this._broadcastedTx) {
