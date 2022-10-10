@@ -289,6 +289,14 @@ class Mempool {
               reserveBNB,
               reserveToken,
             });
+            let k = reserve0 * reserve1;
+            let amountIn = utils.parseUnits(
+              Math.abs(
+                this.getAmountIn(amount, amountOut, k) - reserve0
+              ).toString(),
+              targetFromToken.decimals
+            );
+
             console.log({
               path,
               targetHash,
@@ -296,6 +304,10 @@ class Mempool {
               amountInFromBinarySearch: parseFloat(
                 utils.formatUnits(amount2, targetFromToken.decimals)
               ),
+              amountInFromFormula: parseFloat(
+                utils.formatUnits(amountIn, targetFromToken.decimals)
+              ),
+
               token: targetToToken.symbol,
               address: targetToToken.address,
               amountOut,
@@ -313,50 +325,6 @@ class Mempool {
               );
               // return;
             }
-
-            let k = reserve0 * reserve1;
-            let amountIn = utils.parseUnits(
-              Math.abs(
-                this.getAmountIn(amount, amountOut, k) - reserve0
-              ).toString(),
-              targetFromToken.decimals
-            );
-            // let amountIn = await this.calcOptimalAmountIn({
-            //   router,
-            //   path,
-            //   executionPrice,
-            //   reserveBNB,
-            //   reserveToken,
-            //   targetAmountInWei,
-            //   fromTokenBal: tokenBalance,
-            //   targetMinRecvToken: targetAmountOutMin,
-            // });
-
-            // const sandwichStates = calcSandwichStates(
-            //   amountIn,
-            //   targetAmountOutMin,
-            //   reserveBNB,
-            //   reserveToken,
-            //   amountIn
-            // );
-
-            // if (sandwichStates === null) {
-            //   console.log('Victim receives less than minimum amount');
-            //   return;
-            // }
-
-            // /* First profitability check */
-            // const rawProfits =
-            //   sandwichStates.backrunState.amountOut.sub(amountIn);
-            // console.log(
-            //   'Profits before gas costs: ',
-            //   utils.formatEther(rawProfits).toString()
-            // );
-
-            // if (rawProfits < 0) {
-            // console.log("Not profitable to sandwich before transaction costs");
-            // return;
-            // }
 
             if (amountIn.lte(0)) {
               console.log(
