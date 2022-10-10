@@ -75,7 +75,7 @@ contract ContractTest is Test {
 
         uint256 amountIn = 0.5 ether;
 
-        sandWicher.buy{value: amountIn}(
+        sandWicher.buyToken(
             abi.encode(
                 router, // router
                 amountIn, // amountIn
@@ -112,7 +112,7 @@ contract ContractTest is Test {
 
         uint256 amountIn = 0.5 ether;
 
-        sandWicher.buy(
+        sandWicher.buyToken(
             abi.encode(
                 router, // router
                 amountIn, // amountIn
@@ -129,7 +129,7 @@ contract ContractTest is Test {
         path2[0] = address(toToken);
         path2[1] = address(fromToken);
 
-        sandWicher.sell(
+        sandWicher.sellToken(
             abi.encode(
                 router, // router
                 path2, // token to sell
@@ -143,13 +143,19 @@ contract ContractTest is Test {
 
     function testOnlyOwner() public {
         //expect test to pass since the person withdrawing the tokens is not the owner
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(
+            "AccessControl: account 0xb4c79dab8f259c7aee6e5b2aa729821864227e84 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
         sandWicher.withdrawToken(IERC20(token), 1000);
 
-        vm.expectRevert("Ownable: caller is not the owner");
-        sandWicher.buy("0x0");
+        vm.expectRevert(
+            "AccessControl: account 0xb4c79dab8f259c7aee6e5b2aa729821864227e84 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
+        sandWicher.buyToken("0x0");
 
-        vm.expectRevert("Ownable: caller is not the owner");
-        sandWicher.sell("0x0");
+        vm.expectRevert(
+            "AccessControl: account 0xb4c79dab8f259c7aee6e5b2aa729821864227e84 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
+        sandWicher.sellToken("0x0");
     }
 }

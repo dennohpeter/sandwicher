@@ -3,8 +3,8 @@ pragma solidity ^0.8.12;
 
 // External imports from openzeppelin
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IPancakeRouter02 {
@@ -17,11 +17,19 @@ interface IPancakeRouter02 {
     ) external;
 }
 
-contract SandWicher is Ownable, ReentrancyGuard {
+contract SandWicher is AccessControl, ReentrancyGuard {
+    constructor() {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
     /**
      * @dev Buys tokens
      */
-    function buy(bytes calldata _data) public payable onlyOwner nonReentrant {
+    function buyToken(bytes calldata _data)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        nonReentrant
+    {
         (
             address router,
             uint256 amountIn,
@@ -47,15 +55,20 @@ contract SandWicher is Ownable, ReentrancyGuard {
      * Sells  tokens
      * Balance of tokens we are selling to be gt > 0
      */
-    function sell(bytes calldata _data) public payable onlyOwner nonReentrant {
+    function sellToken(bytes calldata _data)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        nonReentrant
+    {
         (address router, address[] memory path, uint256 amountOutMin) = abi
             .decode(_data, (address, address[], uint256));
 
-        uint256 amountIn = IERC20(path[0]).balanceOf(address(this));
+        IERC20 fromToken = IERC20(path[0]);
+        uint256 amountIn = fromToken.balanceOf(address(this));
 
         require(amountIn > 0, "!BAL");
 
-        _approve(IERC20(path[0]), router, amountIn);
+        _approve(fromToken, router, amountIn);
 
         IPancakeRouter02(router)
             .swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -65,16 +78,6 @@ contract SandWicher is Ownable, ReentrancyGuard {
                 address(this),
                 block.timestamp
             );
-    }
-
-    function simulate(bytes calldata buy_data, bytes calldata sell_data)
-        external
-        payable
-        onlyOwner
-        nonReentrant
-    {
-        buy(buy_data);
-        sell(sell_data);
     }
 
     function _approve(
@@ -92,8 +95,15 @@ contract SandWicher is Ownable, ReentrancyGuard {
      * allows owner of contract to withdraw tokens
      */
 
-    function withdrawToken(IERC20 _token, uint256 amount) external onlyOwner {
-        SafeERC20.safeTransfer(_token, owner(), amount);
+    function withdrawToken(IERC20 _token, uint256 amount)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        SafeERC20.safeTransfer(_token, msg.sender, amount);
+    }
+
+    function withdrawBNB(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        payable(msg.sender).transfer(amount);
     }
 
     /**

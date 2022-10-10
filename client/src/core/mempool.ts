@@ -20,7 +20,7 @@ import { sendMessage } from './telegram';
  * @file mempool.ts
  * @description mempool class is a singleton class that manages  interactions
  * with the mempool including monitoring, processing and executing transactions
- * @author Henry Kariuki
+ * @author Dennoh Peter
  *
  */
 class Mempool {
