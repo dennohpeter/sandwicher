@@ -21,6 +21,7 @@ export const binarySearch = (
   reserveToken: BigNumber
 ): BigNumber => {
   let mid = right.add(left).div(2);
+
   if (right.sub(left).lte(tolerance.mul(mid).div(BN_18))) {
     return mid;
   }
@@ -35,6 +36,7 @@ export const binarySearch = (
     frontRunState.newReserveB
   );
   const victimAmountOut = victimState.amountOut;
+
   if (victimAmountOut.gte(amountOutMin)) {
     return binarySearch(
       mid,
@@ -66,8 +68,10 @@ export const getUniv2DataGivenAmountIn = (
   reserveA: BigNumber,
   reserveB: BigNumber
 ) => {
-  const amountInWithFee = amountIn.mul(9975); // ~0.3% swap fee
+  const amountInWithFee = amountIn.mul(9975); // ~0.25% swap fee
+
   const numerator = amountInWithFee.mul(reserveB);
+
   const denominator = amountInWithFee.add(reserveA.mul(10000));
   const amountOut = numerator.div(denominator);
 

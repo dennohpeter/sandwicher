@@ -283,10 +283,19 @@ class Mempool {
             let reserve1 = parseFloat(
               utils.formatUnits(reserveToken, targetToToken.decimals)
             );
+            let amount2 = await this.calcOptimalAmountIn({
+              targetAmountIn: targetAmountInWei,
+              targetAmountOutMin,
+              reserveBNB,
+              reserveToken,
+            });
             console.log({
               path,
               targetHash,
               amountIn: amount,
+              amountInFromBinarySearch: parseFloat(
+                utils.formatUnits(amount2, targetFromToken.decimals)
+              ),
               token: targetToToken.symbol,
               address: targetToToken.address,
               amountOut,
@@ -1025,16 +1034,12 @@ class Mempool {
    * @returns
    */
   private calcOptimalAmountIn = async (_params: {
-    path: string[];
-    router: string;
-    targetAmountInWei: BigNumber;
-    executionPrice: BigNumber;
-    fromTokenBal: BigNumber;
-    targetMinRecvToken: BigNumber;
+    targetAmountIn: BigNumber;
+    targetAmountOutMin: BigNumber;
     reserveBNB: BigNumber;
     reserveToken: BigNumber;
   }) => {
-    let { targetAmountInWei, targetMinRecvToken, reserveBNB, reserveToken } =
+    let { targetAmountIn, targetAmountOutMin, reserveBNB, reserveToken } =
       _params;
 
     // Lower bound will be 0
@@ -1047,8 +1052,8 @@ class Mempool {
     return binarySearch(
       lowerBound,
       upperBound,
-      targetAmountInWei,
-      targetMinRecvToken,
+      targetAmountIn,
+      targetAmountOutMin,
       reserveBNB,
       reserveToken
     );
