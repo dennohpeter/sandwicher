@@ -28,7 +28,7 @@ export const config = {
    * @description Contract address
    * @type {string}
    */
-  CONTRACT_ADDRESS: '0xbdEAddcB6ff79F3852b2286e3EC02a6743A8e68f',
+  CONTRACT_ADDRESS: '0xA16Dc83299A48aDA8ddf99F9Df36dBDf45ab91fD',
 
   /**
    * STABLE TOKENS addresses e.g BUSD, USDT, USDC, etc
