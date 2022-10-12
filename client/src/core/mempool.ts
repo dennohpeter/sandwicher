@@ -732,7 +732,7 @@ class Mempool {
       return {
         isSafe: false,
         profit: BigNumber.from(0),
-        msg: `Token ${token.symbol}, ${token} is not safe`,
+        msg: `Token ${token.symbol}, ${token.address} is not safe`,
         error,
       };
     }
