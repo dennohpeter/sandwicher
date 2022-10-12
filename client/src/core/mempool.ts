@@ -264,7 +264,7 @@ class Mempool {
             } = await this.checkToken({
               path,
               router,
-              amountIn,
+              amountIn: tokenBalance,
               token: targetToToken,
             });
 
