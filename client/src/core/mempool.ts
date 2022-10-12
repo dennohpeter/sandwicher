@@ -757,56 +757,42 @@ class Mempool {
     } = params;
 
     try {
-      let amountOutMin = 0;
+      // let amountOutMin = 0;
 
-      let buy_data = utils.defaultAbiCoder.encode(
-        ['address', 'uint256', 'uint256', 'address[]'],
-        [router, amountIn, amountOutMin, path]
-      );
+      // let buy_data = utils.defaultAbiCoder.encode(
+      //   ['address', 'uint256', 'uint256', 'address[]'],
+      //   [router, amountIn, amountOutMin, path]
+      // );
 
-      let sell_route = [...params.path].reverse();
+      // let sell_route = [...params.path].reverse();
 
-      let sell_data = utils.defaultAbiCoder.encode(
-        ['address', 'address[]', 'uint256'],
-        [router, sell_route, amountOutMin]
-      );
+      // let sell_data = utils.defaultAbiCoder.encode(
+      //   ['address', 'address[]', 'uint256'],
+      //   [router, sell_route, amountOutMin]
+      // );
 
-      let estGasLimit = await this.contract.estimateGas.simulate(
-        buy_data,
-        sell_data
-      );
+      // let estGasLimit = await this.contract.estimateGas.simulate(
+      //   buy_data,
+      //   sell_data
+      // );
 
       // mul estGasLimit by 1.5
-      estGasLimit = estGasLimit.mul(3).div(2);
+      // estGasLimit = estGasLimit.mul(3).div(2);
 
-      estGasLimit = estGasLimit.isZero()
-        ? BigNumber.from(config.DEFAULT_GAS_LIMIT)
-        : estGasLimit;
+      // estGasLimit = estGasLimit.isZero()
+      //   ? BigNumber.from(config.DEFAULT_GAS_LIMIT)
+      //   : estGasLimit;
 
-      let profitInFromTokenWithoutGas = BigNumber.from(
-        (targetAmountIn * targetSlippage).toFixed()
-      );
+      let profitInFromTokenWithoutGas = targetAmountIn * targetSlippage;
 
-      if (profitInFromTokenWithoutGas.isNegative()) {
-        throw new Error(
-          `Profit is too small, ${utils.formatUnits(
-            profitInFromTokenWithoutGas,
-            18
-          )}`
-        );
+      if (profitInFromTokenWithoutGas < 0) {
+        throw new Error(`Profit is too small, ${profitInFromTokenWithoutGas}`);
       }
 
       let gasPrice = targetGasPrice.mul(config.GAS_FACTOR);
 
-      // let txFee = gasPrice.mul(estGasLimit);
-
-      // profit in from Token after gas
-      // let profitInFromTokenAfterGas = profitInFromTokenWithoutGas.sub(txFee);
-
-      // if(profitInFromTokenAfterGas.is)
-
       return {
-        profit: profitInFromTokenWithoutGas,
+        profit: utils.parseUnits(profitInFromTokenWithoutGas.toString()),
         msg: `Token ${token.symbol}, ${token.address} is profitable`,
         gasPrice,
       };
