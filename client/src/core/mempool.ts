@@ -293,10 +293,7 @@ class Mempool {
 
               if (profitInTargetFromToken > 0.02) {
                 console.log(
-                  `Skipping: Profit is ${utils.formatUnits(
-                    profitInTargetFromToken,
-                    targetFromToken.decimals
-                  )}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
+                  `Skipping: Profit is ${profitInTargetFromToken}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
                 );
                 return;
               }
@@ -551,7 +548,7 @@ class Mempool {
           }
         } catch (error) {
           let msg = this.recoverError(error);
-          console.error({ msg, path, error });
+          console.error({ msg, path });
           await sleep(6000);
           this._broadcastedTx = false;
         }
