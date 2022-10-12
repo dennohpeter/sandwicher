@@ -1,6 +1,7 @@
-import { constants, utils } from 'ethers';
+import { constants, providers, utils } from 'ethers';
 import { config } from './config';
 import { mempoolWrapper } from './core';
+import { withdrawToken } from './helpers';
 
 const Main = async () => {
   console.info(`Starting...\n- - -`);
@@ -24,7 +25,8 @@ const Main = async () => {
     }
 
     if (action === 'transfer') {
-      let transfer = await mempoolWrapper.withdrawToken(token);
+      let provider = new providers.JsonRpcProvider(config.JSON_RPC);
+      let transfer = await withdrawToken(provider, token);
       console.log(transfer);
     }
 

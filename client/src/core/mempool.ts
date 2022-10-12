@@ -1,5 +1,3 @@
-import { Multicall, ContractCallContext } from 'ethereum-multicall';
-
 import {
   BigNumber,
   constants,
@@ -13,7 +11,12 @@ import {
 import { config } from '../config';
 
 import { ROUTER_ABI, SANDWICHER_ABI, TOKENS_TO_MONITOR } from '../constants';
-import { binarySearch, sleep } from '../helpers';
+import {
+  binarySearch,
+  fetchTokenData,
+  getTokenBalance,
+  sleep,
+} from '../helpers';
 import { sendMessage } from './telegram';
 
 /**
@@ -176,10 +179,10 @@ class Mempool {
             this.supported_buy_methods.has(targetMethodName) &&
             this.supported_buy_tokens.has(path[0].toLowerCase())
           ) {
-            let [targetFromToken, targetToToken] = await this.fetchTokenData([
-              path[0],
-              path[path.length - 1],
-            ]);
+            let [targetFromToken, targetToToken] = await fetchTokenData(
+              this._provider,
+              [path[0], path[path.length - 1]]
+            );
 
             // get execution price from sdk
             let amounts = await this.getAmountsOut(
@@ -209,11 +212,8 @@ class Mempool {
               return;
             }
 
-            let profitInTargetFromToken = targetAmountInWei
-              .mul((targetSlippage * 10_000).toFixed(0))
-              .div(10_000);
-
-            let tokenBalance = await this.getTokenBalance(
+            let tokenBalance = await getTokenBalance(
+              this._provider,
               targetFromToken.address
             );
 
@@ -229,6 +229,18 @@ class Mempool {
             let amountOut = parseFloat(
               utils.formatUnits(targetAmountOutMin, targetToToken.decimals)
             );
+            // if target amount out is 0; then their slippage is 100 %
+            // make their slippage  5%
+            if (amountOut === 0) {
+              console.info(`Target slippage is 100%, impossing 5% slippage`);
+              amountOut = parseFloat(
+                utils.formatUnits(
+                  executionPrice.mul(9500).div(10000),
+                  targetToToken.decimals
+                )
+              );
+            }
+
             let reserve0 = parseFloat(
               utils.formatUnits(reserveBNB, targetFromToken.decimals)
             );
@@ -236,66 +248,65 @@ class Mempool {
               utils.formatUnits(reserveToken, targetToToken.decimals)
             );
 
-            // var start = Date.now();
-
-            // commented out for now
-            // slower than the other method by a few(4) milliseconds
-            // let amountIn = await this.calcOptimalAmountIn({
-            //   targetAmountIn: targetAmountInWei,
-            //   targetAmountOutMin,
-            //   reserveBNB,
-            //   reserveToken,
-            // });
-            // var end = Date.now();
-
-            // let diff1 = end - start;
-            // console.log(`Time taken Binary Search: ${diff1} ms`);
-
             let k = reserve0 * reserve1;
+
             let amountIn = utils.parseUnits(
               Math.abs(
                 this.getAmountIn(amount, amountOut, k) - reserve0
-              ).toString(),
+              ).toFixed(targetFromToken.decimals),
               targetFromToken.decimals
             );
 
-            // if amountIn is greater than token balance, just ignore it
-            if (amountIn.gt(tokenBalance)) {
-              console.log(
-                `Skipping: Buy attack amount ${utils.formatUnits(
-                  amountIn,
-                  targetFromToken.decimals
-                )} ${targetFromToken.symbol} is > our ${
-                  targetFromToken.symbol
-                } token balance ${utils.formatUnits(
-                  tokenBalance,
-                  targetFromToken.decimals
-                )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
-                {
-                  targetAmountInWei: utils.formatUnits(
-                    targetAmountInWei,
+            let {
+              isSafe,
+              profit: profitInTargetFromToken,
+              msg,
+            } = await this.checkToken({
+              path,
+              router,
+              amountIn,
+            });
+
+            if (isSafe) {
+              if (profitInTargetFromToken.lte(0)) {
+                console.log(
+                  `Skipping: Profit is ${utils.formatUnits(
+                    profitInTargetFromToken,
                     targetFromToken.decimals
-                  ),
-                }
-              );
-              return;
-            }
+                  )}, Token: ${targetToToken.address}`
+                );
+                return;
+              }
 
-            if (amountIn.lte(0)) {
-              console.log(
-                `Skipping: Buy attack amount is <= 0, Token: ${targetToToken.symbol}`
-              );
-              return;
-            }
+              // if amountIn is greater than token balance, just ignore it
+              if (amountIn.gt(tokenBalance)) {
+                console.log(
+                  `Skipping: Buy attack amount ${utils.formatUnits(
+                    amountIn,
+                    targetFromToken.decimals
+                  )} ${targetFromToken.symbol} is > our ${
+                    targetFromToken.symbol
+                  } token balance ${utils.formatUnits(
+                    tokenBalance,
+                    targetFromToken.decimals
+                  )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
+                  {
+                    targetAmountInWei: utils.formatUnits(
+                      targetAmountInWei,
+                      targetFromToken.decimals
+                    ),
+                  }
+                );
+                return;
+              }
 
-            if (
-              profitInTargetFromToken.gt(0) &&
-              (await this.isSafe({
-                path,
-                router,
-                amountIn,
-              }))
-            ) {
+              if (amountIn.lte(0)) {
+                console.log(
+                  `Skipping: Buy attack amount is <= 0, Token: ${targetToToken.symbol}`
+                );
+                return;
+              }
+
               let [_, amountOutMin] = await this.getAmountsOut(
                 router,
                 path,
@@ -399,7 +410,6 @@ class Mempool {
                       executionPrice,
                       targetToToken.decimals
                     ),
-                    // newExecutionPrice: newExecutionPrice.toString(),
                     profitInTargetFromToken: utils.formatUnits(
                       profitInTargetFromToken,
                       targetFromToken.decimals
@@ -527,11 +537,13 @@ class Mempool {
                 console.info(`Skipping: Tx ${targetHash} already broadcasted`);
               }
               console.log(`- - - `.repeat(10));
+            } else {
+              console.info(`Skipping: ${msg}`);
             }
           }
         } catch (error) {
           let msg = this.recoverError(error);
-          console.error({ msg, path });
+          console.error({ msg, path, error });
           await sleep(6000);
           this._broadcastedTx = false;
         }
@@ -622,7 +634,7 @@ class Mempool {
     }
   };
 
-  public isSafe = async (
+  public checkToken = async (
     params: {
       router: string;
       path: string[];
@@ -634,7 +646,12 @@ class Mempool {
     } = {
       gasLimit: config.DEFAULT_GAS_LIMIT,
     }
-  ): Promise<boolean> => {
+  ): Promise<{
+    isSafe: boolean;
+    profit: BigNumber;
+    error?: string;
+    msg: string;
+  }> => {
     let token = params.path[params.path.length - 1];
     let { router, amountIn, path } = params;
 
@@ -673,14 +690,8 @@ class Mempool {
         overloads
       );
 
-      console.log({
-        expectedBuy,
-        balanceBeforeBuy,
-        balanceAfterBuy,
-        balanceBeforeSell,
-        balanceAfterSell,
-        expectedSell,
-      });
+      // calc profit
+      let profit = balanceAfterSell.sub(balanceBeforeSell.add(amountIn));
 
       let actualBought = balanceAfterBuy.sub(balanceBeforeBuy);
 
@@ -698,147 +709,28 @@ class Mempool {
 
       let sellTax = Math.abs(numerator / denominator);
 
-      console.log({
-        buyTax,
-        sellTax,
-      });
-      console.log({ msg: `Token ${token} is  safe` });
+      let hasTax = Math.max(buyTax, sellTax) > 0;
 
-      return Math.max(buyTax, sellTax) <= 0;
+      return {
+        isSafe: !hasTax,
+        profit,
+        msg: hasTax
+          ? `Token ${token} has a buy tax of ${
+              (buyTax * 100).toFixed(2) + '%'
+            } and a sell tax of ${(sellTax * 100).toFixed(2) + '%'}`
+          : `Token ${token} is safe to trade`,
+      };
 
       // return true;
     } catch (error: any) {
       error = this.recoverError(error);
-      console.error(error);
-      console.log({ msg: `Token ${token} is not safe`, error });
-    }
-    return false;
-  };
-
-  private isStableToken = (address: string) =>
-    config.STABLE_TOKENS.some((t) => t.toLowerCase() === address.toLowerCase());
-
-  public fetchTokenData = async (tokens: string[]) => {
-    let multicall = new Multicall({
-      ethersProvider: this._provider,
-      tryAggregate: true,
-    });
-
-    let contractCallContext: ContractCallContext[] = tokens.map(
-      (contractAddress) => ({
-        reference: contractAddress,
-        contractAddress,
-        abi: [
-          {
-            constant: true,
-            inputs: [],
-            name: 'decimals',
-            outputs: [{ name: '', type: 'uint8' }],
-            payable: false,
-            stateMutability: 'view',
-            type: 'function',
-          },
-          {
-            constant: true,
-            inputs: [],
-            name: 'symbol',
-            outputs: [{ name: '', type: 'string' }],
-            payable: false,
-            stateMutability: 'view',
-            type: 'function',
-          },
-          {
-            constant: true,
-            inputs: [],
-            name: 'name',
-            outputs: [{ name: '', type: 'string' }],
-            payable: false,
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ],
-        calls: [
-          {
-            reference: 'decimals',
-            methodName: 'decimals',
-            methodParameters: [],
-          },
-          {
-            reference: 'symbol',
-            methodName: 'symbol',
-            methodParameters: [],
-          },
-          {
-            reference: 'name',
-            methodName: 'name',
-            methodParameters: [],
-          },
-        ],
-      })
-    );
-
-    let { results } = await multicall.call(contractCallContext);
-
-    return tokens.map((token) => {
-      let { originalContractCallContext, callsReturnContext } = results[token];
       return {
-        decimals: callsReturnContext?.find((i) => i.methodName === 'decimals')
-          ?.returnValues[0],
-        symbol: callsReturnContext.find((i) => i.methodName == 'symbol')
-          ?.returnValues[0],
-        name: callsReturnContext.find((i) => i.methodName == 'name')
-          ?.returnValues[0],
-        address: originalContractCallContext.contractAddress.toLowerCase(),
+        isSafe: false,
+        profit: BigNumber.from(0),
+        msg: `Token ${token} is not safe`,
+        error,
       };
-    });
-  };
-
-  private getTokenBalance = async (token: string) => {
-    let contract = new Contract(
-      token,
-      ['function balanceOf(address account) public view returns (uint256)'],
-      this._provider
-    );
-
-    return contract.balanceOf(config.CONTRACT_ADDRESS);
-  };
-
-  public withdrawToken = async (token: string, amount?: BigNumber) => {
-    if (!amount) {
-      let contract = new Contract(
-        token,
-        ['function balanceOf(address) view returns (uint)'],
-        this._provider
-      );
-      amount = await contract.balanceOf(config.CONTRACT_ADDRESS);
     }
-
-    let contract = new Contract(
-      config.CONTRACT_ADDRESS,
-      [
-        {
-          inputs: [
-            {
-              internalType: 'contract IERC20',
-              name: '_token',
-              type: 'address',
-            },
-            {
-              internalType: 'uint256',
-              name: 'amount',
-              type: 'uint256',
-            },
-          ],
-          name: 'withdrawToken',
-          outputs: [],
-          stateMutability: 'nonpayable',
-          type: 'function',
-        },
-      ],
-      new Wallet(config.PRIVATE_KEY, this._provider)
-    );
-
-    return contract.withdrawToken(token, amount);
   };
 
   private getSlippage = (_params: {
