@@ -5,7 +5,6 @@ pragma solidity ^0.8.12;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IPancakeRouter02 {
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -15,9 +14,25 @@ interface IPancakeRouter02 {
         address to,
         uint256 deadline
     ) external;
+
+    function getAmountsOut(uint256 amountIn, address[] calldata path)
+        external
+        view
+        returns (uint256[] memory amounts);
 }
 
-contract SandWicher is AccessControl, ReentrancyGuard {
+interface ISandWicher {
+    struct SimulationResult {
+        uint256 expectedBuy;
+        uint256 balanceBeforeBuy;
+        uint256 balanceAfterBuy;
+        uint256 balanceBeforeSell;
+        uint256 balanceAfterSell;
+        uint256 expectedSell;
+    }
+}
+
+contract SandWicher is AccessControl, ISandWicher {
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -28,8 +43,73 @@ contract SandWicher is AccessControl, ReentrancyGuard {
     function buyToken(bytes calldata _data)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
-        nonReentrant
     {
+        _buy(_data);
+    }
+
+    /**
+     * Sells  tokens
+     * Balance of tokens we are selling to be gt > 0
+     */
+    function sellToken(bytes calldata _data)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _sell(_data);
+    }
+
+    function simulate(bytes calldata _buydata, bytes calldata _selldata)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (SimulationResult memory result)
+    {
+        address[] memory path;
+        address router;
+        uint256 amountIn;
+        // Buy
+        (router, amountIn, , path) = abi.decode(
+            _buydata,
+            (address, uint256, uint256, address[])
+        );
+
+        IERC20 toToken = IERC20(path[path.length - 1]);
+
+        uint256 balanceBeforeBuy = toToken.balanceOf(address(this));
+
+        uint256 expectedBuy = getAmountsOut(router, amountIn, path);
+
+        _buy(_buydata);
+
+        uint256 balanceAfterBuy = toToken.balanceOf(address(this));
+
+        // Sell
+
+        (router, path, ) = abi.decode(_selldata, (address, address[], uint256));
+
+        IERC20 fromToken = IERC20(path[path.length - 1]);
+
+        uint256 balanceBeforeSell = fromToken.balanceOf(address(this));
+
+        amountIn = IERC20(path[0]).balanceOf(address(this));
+
+        uint256 expectedSell = getAmountsOut(router, amountIn, path);
+
+        _sell(_selldata);
+
+        uint256 balanceAfterSell = fromToken.balanceOf(address(this));
+
+        return
+            SimulationResult({
+                expectedBuy: expectedBuy,
+                balanceBeforeBuy: balanceBeforeBuy,
+                balanceAfterBuy: balanceAfterBuy,
+                balanceBeforeSell: balanceBeforeSell,
+                balanceAfterSell: balanceAfterSell,
+                expectedSell: expectedSell
+            });
+    }
+
+    function _buy(bytes calldata _data) internal {
         (
             address router,
             uint256 amountIn,
@@ -51,15 +131,7 @@ contract SandWicher is AccessControl, ReentrancyGuard {
             );
     }
 
-    /**
-     * Sells  tokens
-     * Balance of tokens we are selling to be gt > 0
-     */
-    function sellToken(bytes calldata _data)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-        nonReentrant
-    {
+    function _sell(bytes calldata _data) internal {
         (address router, address[] memory path, uint256 amountOutMin) = abi
             .decode(_data, (address, address[], uint256));
 
@@ -89,6 +161,18 @@ contract SandWicher is AccessControl, ReentrancyGuard {
             // approving the tokens to be spent by router
             SafeERC20.safeApprove(token, router, amountIn);
         }
+    }
+
+    function getAmountsOut(
+        address router,
+        uint256 amountIn,
+        address[] memory path
+    ) internal view returns (uint256) {
+        uint256[] memory amounts = IPancakeRouter02(router).getAmountsOut(
+            amountIn,
+            path
+        );
+        return amounts[amounts.length - 1];
     }
 
     /**
