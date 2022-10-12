@@ -786,7 +786,8 @@ class Mempool {
       let profitInFromTokenWithoutGas = BigNumber.from(
         (targetAmountIn * targetSlippage).toFixed()
       );
-      if (profitInFromTokenWithoutGas.lt(utils.parseUnits('0.001', 18))) {
+
+      if (profitInFromTokenWithoutGas.isNegative()) {
         throw new Error(
           `Profit is too small, ${utils.formatUnits(
             profitInFromTokenWithoutGas,
