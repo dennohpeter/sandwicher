@@ -274,7 +274,7 @@ class Mempool {
                   `Skipping: Profit is ${utils.formatUnits(
                     profitInTargetFromToken,
                     targetFromToken.decimals
-                  )}, Token: ${targetToToken.address}`
+                  )}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
                 );
                 return;
               }
