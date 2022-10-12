@@ -257,11 +257,7 @@ class Mempool {
               targetFromToken.decimals
             );
 
-            let {
-              safe,
-              profit: profitInTargetFromToken,
-              msg,
-            } = await this.checkToken({
+            let { safe, msg } = await this.isSafe({
               path,
               router,
               amountIn: tokenBalance,
@@ -269,6 +265,24 @@ class Mempool {
             });
 
             if (safe) {
+              // calc profit
+              let { profit: profitInTargetFromToken, gasPrice } =
+                await this.getProfit({
+                  router,
+                  path,
+                  amountIn: tokenBalance,
+                  token: targetToToken,
+                  targetGasPrice:
+                    targetGasPriceInWei || utils.parseUnits('5', 'gwei'),
+                  targetAmountIn: parseFloat(
+                    utils.formatUnits(
+                      targetAmountInWei,
+                      targetFromToken.decimals
+                    )
+                  ),
+                  targetSlippage: 0,
+                });
+
               if (profitInTargetFromToken.lte(0)) {
                 console.log(
                   `Skipping: Profit is ${utils.formatUnits(
@@ -338,13 +352,7 @@ class Mempool {
                     path,
                   },
                   {
-                    gasPrice: targetGasPriceInWei.add(
-                      utils.parseUnits(
-                        config.ADDITIONAL_BUY_GAS.toString(),
-                        'gwei'
-                      )
-                    ),
-                    // gasLimit: config.DEFAULT_GAS_LIMIT,
+                    gasPrice,
                     nonce,
                   }
                 );
@@ -366,6 +374,7 @@ class Mempool {
                     {
                       gasLimit: config.DEFAULT_GAS_LIMIT,
                       nonce,
+                      gasPrice: targetGasPriceInWei,
                     }
                   );
 
@@ -456,17 +465,7 @@ class Mempool {
                     : '';
 
                   msg += `\nGas Price: \`${parseFloat(
-                    parseFloat(
-                      utils.formatUnits(
-                        targetGasPriceInWei.add(
-                          utils.parseUnits(
-                            config.ADDITIONAL_BUY_GAS.toString(),
-                            'gwei'
-                          )
-                        ),
-                        'gwei'
-                      )
-                    ).toFixed(6)
+                    parseFloat(utils.formatUnits(gasPrice, 'gwei')).toFixed(6)
                   ).toString()} Gwei\``;
 
                   msg += `\n- - -`;
@@ -635,7 +634,7 @@ class Mempool {
     }
   };
 
-  public checkToken = async (
+  public isSafe = async (
     params: {
       router: string;
       path: string[];
@@ -654,7 +653,6 @@ class Mempool {
     }
   ): Promise<{
     safe: boolean;
-    profit: BigNumber;
     msg: string;
   }> => {
     let { router, amountIn, path, token } = params;
@@ -694,9 +692,6 @@ class Mempool {
         overloads
       );
 
-      // calc profit
-      let profit = balanceAfterSell.sub(balanceBeforeSell.add(amountIn));
-
       let actualBought = balanceAfterBuy.sub(balanceBeforeBuy);
 
       let numerator: any = expectedBuy.sub(actualBought);
@@ -717,7 +712,6 @@ class Mempool {
 
       return {
         safe: !hasTax,
-        profit,
         msg: hasTax
           ? `Token ${token.symbol}, ${token.address} has a buy tax of ${
               (buyTax * 100).toFixed(2) + '%'
@@ -730,8 +724,97 @@ class Mempool {
       error = this.recoverError(error);
       return {
         safe: false,
-        profit: BigNumber.from(0),
         msg: `Token ${token.symbol}, ${token.address} is not safe, ${error}`,
+      };
+    }
+  };
+
+  public getProfit = async (params: {
+    router: string;
+    path: string[];
+    amountIn: BigNumber;
+    targetAmountIn: number;
+    targetSlippage: number;
+    targetGasPrice: BigNumber;
+    token: {
+      address: string;
+      decimals: number;
+      symbol: string;
+    };
+  }): Promise<{
+    profit: BigNumber;
+    msg: string;
+    gasPrice: BigNumber;
+  }> => {
+    let {
+      router,
+      targetGasPrice,
+      amountIn,
+      targetAmountIn,
+      targetSlippage,
+      path,
+      token,
+    } = params;
+
+    try {
+      let amountOutMin = 0;
+
+      let buy_data = utils.defaultAbiCoder.encode(
+        ['address', 'uint256', 'uint256', 'address[]'],
+        [router, amountIn, amountOutMin, path]
+      );
+
+      let sell_route = [...params.path].reverse();
+
+      let sell_data = utils.defaultAbiCoder.encode(
+        ['address', 'address[]', 'uint256'],
+        [router, sell_route, amountOutMin]
+      );
+
+      let estGasLimit = await this.contract.estimateGas.simulate(
+        buy_data,
+        sell_data
+      );
+
+      // mul estGasLimit by 1.5
+      estGasLimit = estGasLimit.mul(3).div(2);
+
+      estGasLimit = estGasLimit.isZero()
+        ? BigNumber.from(config.DEFAULT_GAS_LIMIT)
+        : estGasLimit;
+
+      let profitInFromTokenWithoutGas = BigNumber.from(
+        (targetAmountIn * targetSlippage).toFixed()
+      );
+      if (profitInFromTokenWithoutGas.lt(utils.parseUnits('0.001', 18))) {
+        throw new Error(
+          `Profit is too small, ${utils.formatUnits(
+            profitInFromTokenWithoutGas,
+            18
+          )}`
+        );
+      }
+
+      let gasPrice = targetGasPrice.mul(config.GAS_FACTOR);
+
+      // let txFee = gasPrice.mul(estGasLimit);
+
+      // profit in from Token after gas
+      // let profitInFromTokenAfterGas = profitInFromTokenWithoutGas.sub(txFee);
+
+      // if(profitInFromTokenAfterGas.is)
+
+      return {
+        profit: profitInFromTokenWithoutGas,
+        msg: `Token ${token.symbol}, ${token.address} is profitable`,
+        gasPrice,
+      };
+    } catch (error: any) {
+      error = this.recoverError(error);
+      return {
+        profit: BigNumber.from(0),
+        gasPrice: BigNumber.from(0),
+        msg: `Token ${token.symbol}, ${token.address} is not profitable, ${error}`,
       };
     }
   };

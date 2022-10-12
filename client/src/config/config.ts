@@ -67,9 +67,9 @@ export const config = {
   MIN_SLIPPAGE_THRESHOLD: 0.7,
 
   /**
-   * @description ADDITIONAL_BUY_GAS that we use in front-running the target
+   * @description GAS_FACTOR that we use in front-running the target
    */
-  ADDITIONAL_BUY_GAS: 1.500014292,
+  GAS_FACTOR: 2,
 
   //////////////// TRADE CONFIG /////////////////
 
