@@ -266,24 +266,32 @@ class Mempool {
 
             if (safe) {
               // calc profit
-              let { profit: profitInTargetFromToken, gasPrice } =
-                await this.getProfit({
-                  router,
-                  path,
-                  amountIn: tokenBalance,
-                  token: targetToToken,
-                  targetGasPrice:
-                    targetGasPriceInWei || utils.parseUnits('5', 'gwei'),
-                  targetAmountIn: parseFloat(
-                    utils.formatUnits(
-                      targetAmountInWei,
-                      targetFromToken.decimals
-                    )
-                  ),
-                  targetSlippage: 0,
-                });
+              // let { profit: profitInTargetFromToken, gasPrice } =
+              //   await this.getProfit({
+              //     router,
+              //     path,
+              //     amountIn: tokenBalance,
+              //     token: targetToToken,
+              //     targetGasPrice:
+              //       targetGasPriceInWei || utils.parseUnits('5', 'gwei'),
+              //     targetAmountIn: parseFloat(
+              //       utils.formatUnits(
+              //         targetAmountInWei,
+              //         targetFromToken.decimals
+              //       )
+              //     ),
+              //     targetSlippage: 0,
+              //   });
 
-              if (profitInTargetFromToken.lte(0)) {
+              let profitInTargetFromToken =
+                parseFloat(
+                  utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
+                ) * targetSlippage;
+
+              let gasPrice =
+                targetGasPriceInWei?.mul(2) || utils.parseUnits('7', 'gwei');
+
+              if (profitInTargetFromToken > 0.02) {
                 console.log(
                   `Skipping: Profit is ${utils.formatUnits(
                     profitInTargetFromToken,
