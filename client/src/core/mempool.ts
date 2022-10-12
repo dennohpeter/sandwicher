@@ -265,6 +265,7 @@ class Mempool {
               path,
               router,
               amountIn,
+              token: targetToToken,
             });
 
             if (isSafe) {
@@ -639,6 +640,11 @@ class Mempool {
       router: string;
       path: string[];
       amountIn: BigNumber;
+      token: {
+        address: string;
+        decimals: number;
+        symbol: string;
+      };
     },
     overloads: {
       gasLimit?: number | string;
@@ -652,8 +658,7 @@ class Mempool {
     error?: string;
     msg: string;
   }> => {
-    let token = params.path[params.path.length - 1];
-    let { router, amountIn, path } = params;
+    let { router, amountIn, path, token } = params;
 
     try {
       let amountOutMin = 0;
@@ -715,10 +720,10 @@ class Mempool {
         isSafe: !hasTax,
         profit,
         msg: hasTax
-          ? `Token ${token} has a buy tax of ${
+          ? `Token ${token.symbol}, ${token.address} has a buy tax of ${
               (buyTax * 100).toFixed(2) + '%'
             } and a sell tax of ${(sellTax * 100).toFixed(2) + '%'}`
-          : `Token ${token} is safe to trade`,
+          : `Token ${token.symbol}, ${token.address} is safe to trade`,
       };
 
       // return true;
@@ -727,7 +732,7 @@ class Mempool {
       return {
         isSafe: false,
         profit: BigNumber.from(0),
-        msg: `Token ${token} is not safe`,
+        msg: `Token ${token.symbol}, ${token} is not safe`,
         error,
       };
     }
