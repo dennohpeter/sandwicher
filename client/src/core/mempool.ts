@@ -258,7 +258,7 @@ class Mempool {
             );
 
             let {
-              isSafe,
+              safe,
               profit: profitInTargetFromToken,
               msg,
             } = await this.checkToken({
@@ -268,7 +268,7 @@ class Mempool {
               token: targetToToken,
             });
 
-            if (isSafe) {
+            if (safe) {
               if (profitInTargetFromToken.lte(0)) {
                 console.log(
                   `Skipping: Profit is ${utils.formatUnits(
@@ -653,9 +653,8 @@ class Mempool {
       gasLimit: config.DEFAULT_GAS_LIMIT,
     }
   ): Promise<{
-    isSafe: boolean;
+    safe: boolean;
     profit: BigNumber;
-    error?: string;
     msg: string;
   }> => {
     let { router, amountIn, path, token } = params;
@@ -717,7 +716,7 @@ class Mempool {
       let hasTax = Math.max(buyTax, sellTax) > 0;
 
       return {
-        isSafe: !hasTax,
+        safe: !hasTax,
         profit,
         msg: hasTax
           ? `Token ${token.symbol}, ${token.address} has a buy tax of ${
@@ -730,10 +729,9 @@ class Mempool {
     } catch (error: any) {
       error = this.recoverError(error);
       return {
-        isSafe: false,
+        safe: false,
         profit: BigNumber.from(0),
-        msg: `Token ${token.symbol}, ${token.address} is not safe`,
-        error,
+        msg: `Token ${token.symbol}, ${token.address} is not safe, ${error}`,
       };
     }
   };
