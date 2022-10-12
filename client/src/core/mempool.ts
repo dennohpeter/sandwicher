@@ -544,7 +544,7 @@ class Mempool {
           }
         } catch (error) {
           let msg = this.recoverError(error);
-          console.error({ msg, path, error });
+          console.error({ msg, path });
           await sleep(6000);
           this._broadcastedTx = false;
         }
