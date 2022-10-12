@@ -810,8 +810,8 @@ class Mempool {
         gasPrice,
       };
     } catch (error: any) {
-      error = this.recoverError(error);
       console.error({ error });
+      error = this.recoverError(error);
       return {
         profit: BigNumber.from(0),
         gasPrice: BigNumber.from(0),
