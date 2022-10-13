@@ -74,17 +74,6 @@ export const config = {
   //////////////// TRADE CONFIG /////////////////
 
   /**
-   * BNB amount you will spend
-   */
-  BNB_BUY_AMOUNT: 0.01,
-
-  /**
-   * USD/C/T you will spend if target method was
-   * swapExactTokensForTokensSupportingFeeOnTransferTokens
-   */
-  USD_BUY_AMOUNT: 1000,
-
-  /**
    * @description WBNB address
    * @type {string}
    * @default 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c

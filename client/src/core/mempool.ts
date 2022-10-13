@@ -265,6 +265,35 @@ class Mempool {
             });
 
             if (safe) {
+              // if amountIn is greater than token balance, just ignore it
+              if (amountIn.gt(tokenBalance)) {
+                console.log(
+                  `Skipping: Buy attack amount ${utils.formatUnits(
+                    amountIn,
+                    targetFromToken.decimals
+                  )} ${targetFromToken.symbol} is > our ${
+                    targetFromToken.symbol
+                  } token balance ${utils.formatUnits(
+                    tokenBalance,
+                    targetFromToken.decimals
+                  )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
+                  {
+                    targetAmountInWei: utils.formatUnits(
+                      targetAmountInWei,
+                      targetFromToken.decimals
+                    ),
+                  }
+                );
+                return;
+              }
+
+              if (amountIn.lte(0)) {
+                console.log(
+                  `Skipping: Buy attack amount is <= 0, Token: ${targetToToken.symbol}`
+                );
+                return;
+              }
+
               // calc profit
               // let { profit: profitInTargetFromToken, gasPrice } =
               //   await this.getProfit({
@@ -291,38 +320,9 @@ class Mempool {
               let gasPrice =
                 targetGasPriceInWei?.mul(2) || utils.parseUnits('7', 'gwei');
 
-              if (profitInTargetFromToken > 0.02) {
+              if (profitInTargetFromToken < 0.02) {
                 console.log(
                   `Skipping: Profit is ${profitInTargetFromToken}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
-                );
-                return;
-              }
-
-              // if amountIn is greater than token balance, just ignore it
-              if (amountIn.gt(tokenBalance)) {
-                console.log(
-                  `Skipping: Buy attack amount ${utils.formatUnits(
-                    amountIn,
-                    targetFromToken.decimals
-                  )} ${targetFromToken.symbol} is > our ${
-                    targetFromToken.symbol
-                  } token balance ${utils.formatUnits(
-                    tokenBalance,
-                    targetFromToken.decimals
-                  )} ${targetFromToken.symbol}, Token: ${targetToToken.symbol}`,
-                  {
-                    targetAmountInWei: utils.formatUnits(
-                      targetAmountInWei,
-                      targetFromToken.decimals
-                    ),
-                  }
-                );
-                return;
-              }
-
-              if (amountIn.lte(0)) {
-                console.log(
-                  `Skipping: Buy attack amount is <= 0, Token: ${targetToToken.symbol}`
                 );
                 return;
               }
