@@ -257,11 +257,24 @@ class Mempool {
               targetFromToken.decimals
             );
 
+            let [_, amountOutMin] = await this.getAmountsOut(
+              router,
+              path,
+              amountIn
+            );
+
+            // sedt our slippage
+            amountOutMin = amountOutMin.mul(900).div(1000);
+
+            let sellAmountOutMin = amountIn.mul(9000).div(10000);
+
             let { safe, msg } = await this.isSafe({
               path,
               router,
-              amountIn: tokenBalance.mul(1).div(10),
+              amountIn,
+              amountOutMin,
               token: targetToToken,
+              sellAmountOutMin,
             });
 
             if (safe) {
@@ -295,23 +308,6 @@ class Mempool {
               }
 
               // calc profit
-              // let { profit: profitInTargetFromToken, gasPrice } =
-              //   await this.getProfit({
-              //     router,
-              //     path,
-              //     amountIn: tokenBalance,
-              //     token: targetToToken,
-              //     targetGasPrice:
-              //       targetGasPriceInWei || utils.parseUnits('5', 'gwei'),
-              //     targetAmountIn: parseFloat(
-              //       utils.formatUnits(
-              //         targetAmountInWei,
-              //         targetFromToken.decimals
-              //       )
-              //     ),
-              //     targetSlippage: 0,
-              //   });
-
               let profitInTargetFromToken =
                 parseFloat(
                   utils.formatUnits(targetAmountInWei, targetFromToken.decimals)
@@ -326,15 +322,6 @@ class Mempool {
                 );
                 return;
               }
-
-              let [_, amountOutMin] = await this.getAmountsOut(
-                router,
-                path,
-                amountIn
-              );
-
-              // set our slippage
-              amountOutMin = amountOutMin.mul(900).div(1000);
 
               targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
 
@@ -375,7 +362,11 @@ class Mempool {
                     msg: sellErrorMsg,
                     hash: sellHash,
                   } = await this.sell(
-                    { router, amountOutMin: constants.Zero, path: sell_route },
+                    {
+                      router,
+                      amountOutMin: sellAmountOutMin,
+                      path: sell_route,
+                    },
                     {
                       gasLimit: config.DEFAULT_GAS_LIMIT,
                       nonce,
@@ -644,6 +635,8 @@ class Mempool {
       router: string;
       path: string[];
       amountIn: BigNumber;
+      amountOutMin: BigNumber;
+      sellAmountOutMin: BigNumber;
       token: {
         address: string;
         decimals: number;
@@ -660,11 +653,10 @@ class Mempool {
     safe: boolean;
     msg: string;
   }> => {
-    let { router, amountIn, path, token } = params;
+    let { router, amountOutMin, amountIn, sellAmountOutMin, path, token } =
+      params;
 
     try {
-      let amountOutMin = 0;
-
       let buy_data = utils.defaultAbiCoder.encode(
         ['address', 'uint256', 'uint256', 'address[]'],
         [router, amountIn, amountOutMin, path]
@@ -674,7 +666,7 @@ class Mempool {
 
       let sell_data = utils.defaultAbiCoder.encode(
         ['address', 'address[]', 'uint256'],
-        [router, sell_route, amountOutMin]
+        [router, sell_route, sellAmountOutMin]
       );
 
       let {
