@@ -260,7 +260,7 @@ class Mempool {
             let { safe, msg } = await this.isSafe({
               path,
               router,
-              amountIn: tokenBalance,
+              amountIn: tokenBalance.mul(1).div(10),
               token: targetToToken,
             });
 
