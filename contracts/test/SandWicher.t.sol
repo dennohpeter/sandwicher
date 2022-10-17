@@ -10,7 +10,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract ContractTest is Test {
     uint256 mainnetFork;
     string internal constant MAINNET_RPC_URL =
-        "https://bsc-dataseed4.ninicoin.io";
+        "https://bsc-dataseed1.ninicoin.io";
 
     SandWicher sandWicher;
     TokenERC20 token;
@@ -35,6 +35,9 @@ contract ContractTest is Test {
     function testInMainnetFork() public {
         assertEq(vm.activeFork(), mainnetFork);
         assertEq(block.number, blockNumber);
+
+        vm.makePersistent(address(sandWicher));
+        assert(vm.isPersistent(address(sandWicher)));
     }
 
     // function testwithdrawToken() public {
@@ -143,8 +146,10 @@ contract ContractTest is Test {
     //     vm.stopPrank();
     // }
 
-    function testRugCheck() external {
+    function testRugCheck() public {
         vm.startPrank(defaultAdmin);
+
+        assertEq(block.number, blockNumber);
 
         IERC20 fromToken = IERC20(WBNB);
         uint256 amount = 0.4243 ether;
@@ -170,7 +175,7 @@ contract ContractTest is Test {
             abi.encode(
                 router, // router
                 amountIn, // amountIn
-                0,
+                0, // amountOutMin
                 path
             )
         );
