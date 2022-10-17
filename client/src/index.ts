@@ -1,6 +1,6 @@
 import { constants, providers, utils } from 'ethers';
 import { config } from './config';
-import { mempoolWrapper } from './core';
+import { sandwicher } from './core';
 import { withdrawToken } from './helpers';
 
 const Main = async () => {
@@ -9,18 +9,21 @@ const Main = async () => {
   // get args
   let args = process.argv.slice(2);
 
-  args.length === 0 && mempoolWrapper.monitor();
+  args.length === 0 && sandwicher.init();
 
   if (args.length > 0) {
     let action = args[0].toLowerCase();
     let token = args[1];
 
     if (action === 'sell') {
-      let sell = await mempoolWrapper.sell({
+      let { sellData } = sandwicher.prepareBuyAndSellData({
         router: config.PANCAKE_ROUTER_ADDRESS,
-        amountOutMin: constants.Zero,
         path: [token, config.WBNB_ADDRESS],
+        amountOutMin: constants.Zero,
+        sellAmountOutMin: constants.Zero,
+        amountIn: constants.Zero,
       });
+      let sell = await sandwicher.sellTx(sellData);
       console.log(sell);
     }
 
@@ -31,15 +34,15 @@ const Main = async () => {
     }
 
     if (action === 'buy') {
-      let buy = await mempoolWrapper.buy({
+      let { buyData } = sandwicher.prepareBuyAndSellData({
         router: config.PANCAKE_ROUTER_ADDRESS,
+        path: [config.WBNB_ADDRESS, token],
         amountOutMin: constants.Zero,
-        path: [
-          '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-          config.WBNB_ADDRESS,
-        ],
-        amountIn: utils.parseUnits('0.05'),
+        sellAmountOutMin: constants.Zero,
+        amountIn: constants.Zero,
       });
+
+      let buy = await sandwicher.buyTx(buyData);
       console.log(buy);
     }
   }

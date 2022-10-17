@@ -64,7 +64,7 @@ export const config = {
    * @type {number}
    * @default 1%
    */
-  MIN_SLIPPAGE_THRESHOLD: 0.7,
+  MIN_SLIPPAGE_THRESHOLD: 0.8,
 
   /**
    * @description GAS_FACTOR that we use in front-running the target

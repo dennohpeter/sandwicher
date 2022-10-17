@@ -92,21 +92,29 @@ export const calcSandwichStates = (
   reserveToken: BigNumber,
   optimalSandwichAmount: BigNumber
 ) => {
-  const frontrunState = getUniv2DataGivenAmountIn(
+  let frontrunState = getUniv2DataGivenAmountIn(
     optimalSandwichAmount,
     reserveWETH,
     reserveToken
   );
-  const victimState = getUniv2DataGivenAmountIn(
+  console.log({
+    frontrunState,
+  });
+  let victimState = getUniv2DataGivenAmountIn(
     amountIn,
     frontrunState.newReserveA,
     frontrunState.newReserveB
   );
-  const backrunState = getUniv2DataGivenAmountIn(
+  console.log({
+    victimState,
+  });
+  let backrunState = getUniv2DataGivenAmountIn(
     frontrunState.amountOut,
     victimState.newReserveB,
     victimState.newReserveA
   );
+
+  console.log({ backrunState });
 
   if (victimState.amountOut.lt(amountOutMin)) {
     return null;
