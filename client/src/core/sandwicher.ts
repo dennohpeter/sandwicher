@@ -309,8 +309,12 @@ class Sandwicher {
         reserve1: reserveToken,
       });
 
+      let rawProfitFormatted = utils.formatUnits(
+        rawProfit,
+        targetFromToken.decimals
+      );
       console.log({
-        rawProfit: utils.formatUnits(rawProfit, targetFromToken.decimals),
+        rawProfit: rawProfitFormatted,
       });
       let gasPrice =
         targetGasPriceInWei?.mul(2) || utils.parseUnits('7', 'gwei');
@@ -318,12 +322,12 @@ class Sandwicher {
       let profitInTargetFromToken = constants.Zero;
       let buyHash = '';
       let sellHash = '';
-      // if (profitInTargetFromToken < 0.02) {
-      //   console.log(
-      //     `Skipping: Profit is ${profitInTargetFromToken}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
-      //   );
-      //   return;
-      // }
+      if (parseFloat(rawProfitFormatted) < 0.02) {
+        console.log(
+          `Skipping: Raw Profit is ${rawProfitFormatted}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
+        );
+        return;
+      }
 
       targetGasPriceInWei = targetGasPriceInWei || constants.Zero;
 
