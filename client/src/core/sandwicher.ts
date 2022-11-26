@@ -316,13 +316,20 @@ class Sandwicher {
       console.log({
         rawProfit: rawProfitFormatted,
       });
-      let gasPrice =
-        targetGasPriceInWei?.mul(2) || utils.parseUnits('7', 'gwei');
+      let gasPrice = utils.parseUnits(
+        Math.max(
+          parseFloat(
+            utils.formatUnits(targetGasPriceInWei || BigNumber.from(0), 'gwei')
+          ) * config.GAS_FACTOR,
+          7
+        ).toString(),
+        'gwei'
+      );
 
       let profitInTargetFromToken = constants.Zero;
-      if (parseFloat(rawProfitFormatted) < 0.01) {
+      if (parseFloat(rawProfitFormatted) < config.MIN_PROFIT_THRESHOLD) {
         console.log(
-          `Skipping: Raw Profit is ${rawProfitFormatted}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
+          `Skipping: Raw Profit is ${rawProfitFormatted}, Min Profit: ${config.MIN_PROFIT_THRESHOLD}Token: ${targetToToken.symbol}, ${targetToToken.address}`
         );
         return;
       }
