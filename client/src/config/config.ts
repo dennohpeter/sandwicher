@@ -69,7 +69,7 @@ export const config = {
   /**
    * @description GAS_FACTOR that we use in front-running the target
    */
-  GAS_FACTOR: 3.5,
+  GAS_FACTOR: 3.9,
 
   //////////////// TRADE CONFIG /////////////////
 
