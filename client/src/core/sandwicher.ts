@@ -322,7 +322,7 @@ class Sandwicher {
       let profitInTargetFromToken = constants.Zero;
       let buyHash = '';
       let sellHash = '';
-      if (parseFloat(rawProfitFormatted) < 0.02) {
+      if (parseFloat(rawProfitFormatted) < 0.01) {
         console.log(
           `Skipping: Raw Profit is ${rawProfitFormatted}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
         );
