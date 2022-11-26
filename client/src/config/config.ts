@@ -86,4 +86,11 @@ export const config = {
    * @default 0x10ED43C718714eb63d5aA57B78B54704E256024E
    */
   PANCAKE_ROUTER_ADDRESS: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
+
+  /**
+   * @description Trade Config
+   * @type MIN_PROFIT_THRESHOLD is the minimum profit threshold that we allow
+   * @type {number}
+   */
+  MIN_PROFIT_THRESHOLD: parseFloat(process.env.MIN_PROFIT_THRESHOLD || '0.003'),
 };

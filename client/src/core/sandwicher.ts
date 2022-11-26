@@ -320,8 +320,6 @@ class Sandwicher {
         targetGasPriceInWei?.mul(2) || utils.parseUnits('7', 'gwei');
 
       let profitInTargetFromToken = constants.Zero;
-      let buyHash = '';
-      let sellHash = '';
       if (parseFloat(rawProfitFormatted) < 0.01) {
         console.log(
           `Skipping: Raw Profit is ${rawProfitFormatted}, Token: ${targetToToken.symbol}, ${targetToToken.address}`
